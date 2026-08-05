@@ -1,0 +1,846 @@
+### Menuva Backend — Full API Requests (real paths + real payloads)
+### Every body below matches the actual Zod schema in src/schemas/*.
+###
+### HOW TO USE THIS FILE
+### - VS Code "REST Client" extension: click "Send Request" above any block. Variables
+###   (@var) and chained {{name.response.body...}} references work natively.
+### - Thunder Client: File icon > Import > pick this file (it reads .http).
+### - Postman: File > Import > pick this file (modern Postman reads .http directly).
+###   If your version can't, just copy the JSON body under each request into Postman's
+###   Body > raw > JSON tab, and copy the URL + headers manually — everything you need
+###   is self-contained per block.
+###
+### FIRST STEP — always run `npm run seed:dev` and paste its output into the variables
+### below. Every {{...}}-uuid placeholder must be replaced with a real seeded ID.
+
+@baseUrl = http://localhost:4000/api
+
+# ---- paste from `npm run seed:dev` output ----
+@ownerEmail = demo-cc411c@example.com
+@ownerPassword = password123
+@dinerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiaXNzIjoic3VwYWJhc2UiLCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImlzX2RpbmVyIjp0cnVlLCJzdWIiOiJmYzc2YjJjNi0zNzU3LTRkNmQtYTVhYy0zZWZiYzc4ZGVkZDEiLCJzZXNzaW9uX2lkIjoiN2I0NTYyZjgtNzlhMS00OGI3LTliMDktYzk4ZjZkMDQyZjhiIiwibWVtYmVyX2lkIjoiZmM3NmIyYzYtMzc1Ny00ZDZkLWE1YWMtM2VmYmM3OGRlZGQxIiwicmVzdGF1cmFudF9pZCI6ImRlMTQ3NDNiLWRkNWMtNGVjMy1hYzllLWRlMTAyOGFjMzA3YSIsImJyYW5jaF9pZCI6Ijk5MDZkNDI4LWU0YzQtNGMyYS04Y2JiLWJmYmYxYjlmMDA4MiIsInRhYmxlX2lkIjoiZjg4YTgzYjctMTgxYy00NDg4LWIyMTktZGQ0MWEwYjNjZWIzIiwiZXhwIjoxNzg0NTU3MjUyLCJpYXQiOjE3ODQ1NTM2NTJ9.1ZJnmWqKJMDgSR13lN62JsNSAIkGyn6zJ8pbdnvO0Zo
+@editorToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiaXNzIjoic3VwYWJhc2UiLCJzdWIiOiJ1c2VyLWlkIiwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhcHBfbWV0YWRhdGEiOnsicmVzdGF1cmFudF9pZCI6ImRlMTQ3NDNiLWRkNWMtNGVjMy1hYzllLWRlMTAyOGFjMzA3YSIsInJvbGUiOiJlZGl0b3IiLCJlbXBsb3llZV9pZCI6ImE5YTYwYmE1LWNmYzItNDgwYi05ZGEwLWUwNWZlNTlmZTk2ZiJ9LCJleHAiOjE3ODQ1NTcyNTIsImlhdCI6MTc4NDU1MzY1Mn0.Nmg6WEmccbqTAzhMiB_i3Ugk9Ln6dZDnhnPfVm961BY
+@kitchenToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiaXNzIjoic3VwYWJhc2UiLCJzdWIiOiJ1c2VyLWlkIiwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhcHBfbWV0YWRhdGEiOnsicmVzdGF1cmFudF9pZCI6ImRlMTQ3NDNiLWRkNWMtNGVjMy1hYzllLWRlMTAyOGFjMzA3YSIsInJvbGUiOiJraXRjaGVuIiwiYnJhbmNoX2lkIjoiOTkwNmQ0MjgtZTRjNC00YzJhLThjYmItYmZiZjFiOWYwMDgyIiwiZW1wbG95ZWVfaWQiOiIyZWY5N2RhYi1lZDg1LTQ1NWEtYWQwYi0yMzY2Zjg4ZWZiZDUifSwiZXhwIjoxNzg0NTU3MjUyLCJpYXQiOjE3ODQ1NTM2NTJ9.WWfYM-m-m2gdo9Aini262zI7EUbf3rQjJ5gu1dByaiY
+@restaurantId = de14743b-dd5c-4ec3-ac9e-de1028ac307alll
+@branchId = PASTE_BRANCH_UUID_HERE
+@tableQrToken = db221133-a063-4a71-9878-16fdc31c4962
+@menuItemId = PASTE_A_MENU_ITEM_UUID_HERE
+@categoryId = PASTE_A_CATEGORY_UUID_HERE
+
+# ownerToken is minted below by logging in (step 1b) — REST Client auto-fills it.
+# In Postman/Thunder: run 1b manually, then paste the returned token here.
+@ownerToken =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiaXNzIjoic3VwYWJhc2UiLCJzdWIiOiJ1c2VyLWlkIiwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhcHBfbWV0YWRhdGEiOnsicmVzdGF1cmFudF9pZCI6ImRlMTQ3NDNiLWRkNWMtNGVjMy1hYzllLWRlMTAyOGFjMzA3YSIsInJvbGUiOiJlZGl0b3IiLCJlbXBsb3llZV9pZCI6ImE5YTYwYmE1LWNmYzItNDgwYi05ZGEwLWUwNWZlNTlmZTk2ZiJ9LCJleHAiOjE3ODQ1NTcyNTIsImlhdCI6MTc4NDU1MzY1Mn0.Nmg6WEmccbqTAzhMiB_i3Ugk9Ln6dZDnhnPfVm961BY
+
+
+
+# ===========================================================================
+# 1. AUTH
+# ===========================================================================
+
+### 1a. Owner signup (creates a brand-new restaurant — only if not using seed:dev)
+POST {{baseUrl}}/auth/owner/signup
+Content-Type: application/json
+
+{
+  "name": "Sabih Khan",
+  "email": "owner@example.com",
+  "password": "password123",
+  "restaurantName": "Cheat Day Diner",
+  "restaurantSlug": "cheat-day-diner"
+}
+
+### 1b. Staff login (use the owner creds seed:dev printed) — copy token into @ownerToken
+# @name staffLogin
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{ownerEmail}}",
+  "password": "{{ownerPassword}}"
+}
+
+### 1c. Staff refresh (uses the httpOnly cookie set by login — browser/REST Client only)
+POST {{baseUrl}}/auth/staff/refresh
+
+### 1d. Staff logout
+POST {{baseUrl}}/auth/staff/logout
+Authorization: Bearer {{ownerToken}}
+
+### 1e. Diner join (mint a fresh diner session from a table QR token)
+# @name dinerJoin
+POST {{baseUrl}}/auth/diner/join
+Content-Type: application/json
+
+{
+  "qrToken": "{{tableQrToken}}",
+  "deviceId": "test-device-1",
+  "dinerName": "Sabih",
+  "initials": "SK"
+}
+
+### 1f. Staff invite (owner only — invites a new employee)
+POST {{baseUrl}}/auth/staff/invite
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "email": "new-waiter@example.com",
+  "name": "New Waiter",
+  "branchId": "{{branchId}}",
+  "role": "editor"
+}
+
+
+# ===========================================================================
+# 2. MENU (diner reads, owner/editor writes)
+# ===========================================================================
+
+### 2a. Get full menu (diner)
+GET {{baseUrl}}/menu
+Authorization: Bearer {{dinerToken}}
+
+### 2b. Get one menu item
+GET {{baseUrl}}/menu/items/{{menuItemId}}
+Authorization: Bearer {{dinerToken}}
+
+### 2c. Create menu item (owner/editor)
+POST {{baseUrl}}/menu/items
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "categoryId": "{{categoryId}}",
+  "name": "Spicy Zinger Burger",
+  "description": "Crispy fried chicken, spicy mayo, pickles",
+  "price": 145000,
+  "costPrice": 60000,
+  "tag": "bestseller",
+  "emoji": "🍔",
+  "isSpicy": true,
+  "isGlutenFree": false,
+  "sortOrder": 1
+}
+
+### 2d. Update menu item (partial — only send fields you're changing)
+PATCH {{baseUrl}}/menu/items/{{menuItemId}}
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "Spicy Zinger Burger (Updated)",
+  "isSpicy": true
+}
+
+### 2e. Update ONLY the price (separate endpoint — likely audit-logged distinctly)
+PATCH {{baseUrl}}/menu/items/{{menuItemId}}/price
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "price": 160000
+}
+
+### 2f. Delete menu item
+DELETE {{baseUrl}}/menu/items/{{menuItemId}}
+Authorization: Bearer {{ownerToken}}
+
+### 2g. Create menu category
+POST {{baseUrl}}/menu/categories
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "Desserts",
+  "sortOrder": 3
+}
+
+### 2h. Update menu category
+PATCH {{baseUrl}}/menu/categories/{{categoryId}}
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "Desserts & Sweets"
+}
+
+### 2i. Delete menu category
+DELETE {{baseUrl}}/menu/categories/{{categoryId}}
+Authorization: Bearer {{ownerToken}}
+
+### 2j. Replace an item's modifier groups (full replace, not patch)
+PATCH {{baseUrl}}/menu/items/{{menuItemId}}/modifier-groups
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "groups": [
+    {
+      "name": "Extras",
+      "groupType": "add_on",
+      "isRequired": false,
+      "maxSelections": 2,
+      "sortOrder": 1,
+      "modifiers": [
+        { "name": "Extra Cheese", "priceDelta": 20000, "sortOrder": 1 },
+        { "name": "Jalapenos", "priceDelta": 10000, "sortOrder": 2 }
+      ]
+    }
+  ]
+}
+# groupType must be "variant" or "add_on" (MODIFIER_GROUP_TYPES in src/config/constants.ts).
+
+### 2k. Set branch-level item availability (86 an item at one branch)
+PATCH {{baseUrl}}/branches/{{branchId}}/menu/{{menuItemId}}/availability
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "available": false
+}
+
+### 2l. Branch-level price override
+PATCH {{baseUrl}}/branches/{{branchId}}/menu/{{menuItemId}}/price-override
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "priceOverride": 135000
+}
+# to clear an override: "priceOverride": null
+
+
+# ===========================================================================
+# 3. CART (diner only)
+# ===========================================================================
+
+### 3a. Get current cart
+GET {{baseUrl}}/cart
+Authorization: Bearer {{dinerToken}}
+
+### 3b. Add item to cart
+# @name addToCart
+POST {{baseUrl}}/cart/items
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "menuItemId": "{{menuItemId}}",
+  "quantity": 2,
+  "notes": "no onions",
+  "modifiers": [
+    { "groupId": "PASTE_MODIFIER_GROUP_UUID", "modifierId": "PASTE_MODIFIER_UUID" }
+  ]
+}
+# modifiers is optional — omit entirely for a plain item with no add-ons.
+
+### 3c. Update a cart item's quantity/notes
+PATCH {{baseUrl}}/cart/items/PASTE_CART_ITEM_ID
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "quantity": 3,
+  "notes": "extra spicy"
+}
+
+### 3d. Remove a cart item
+DELETE {{baseUrl}}/cart/items/PASTE_CART_ITEM_ID
+Authorization: Bearer {{dinerToken}}
+
+
+# ===========================================================================
+# 4. ORDERS
+# ===========================================================================
+
+### 4a. Place order from current cart (diner) — idempotencyKey MUST be a fresh UUID
+# generate one at https://www.uuidgenerator.net/ or `node -e "console.log(crypto.randomUUID())"`
+POST {{baseUrl}}/orders/place
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "idempotencyKey": "11111111-1111-4111-8111-111111111111",
+  "kitchenNotes": "table by the window"
+}
+# Re-send this EXACT body again → must NOT create a second order (idempotency test).
+
+### 4b. Get all orders for the current diner session
+GET {{baseUrl}}/orders
+Authorization: Bearer {{dinerToken}}
+
+### 4c. Get one order by ID (diner who owns it, or staff)
+GET {{baseUrl}}/orders/PASTE_ORDER_ID
+Authorization: Bearer {{dinerToken}}
+
+
+# ===========================================================================
+# 5. KITCHEN (staff: owner/branch_manager/manager/kitchen)
+# ===========================================================================
+
+### 5a. Get the kitchen board (active orders)
+GET {{baseUrl}}/kitchen/board
+Authorization: Bearer {{kitchenToken}}
+
+### 5a-ii. Filtered by status / branch
+GET {{baseUrl}}/kitchen/board?status=placed&branchId={{branchId}}
+Authorization: Bearer {{kitchenToken}}
+
+### 5b. Advance an order's status (placed -> preparing -> ready -> served)
+POST {{baseUrl}}/orders/PASTE_ORDER_ID/advance
+Authorization: Bearer {{kitchenToken}}
+Content-Type: application/json
+
+{
+  "to": "preparing"
+}
+# "to" is optional — omit it and the backend advances to the next state automatically.
+
+
+# ===========================================================================
+# 6. ANALYTICS (owner / branch_manager — NOT diner or kitchen)
+# ===========================================================================
+
+### 6a. Sales
+GET {{baseUrl}}/analytics/sales?from=2026-06-01T00:00:00Z&to=2026-07-31T23:59:59Z
+Authorization: Bearer {{ownerToken}}
+
+### 6b. Menu performance (owner only)
+GET {{baseUrl}}/analytics/menu-performance
+Authorization: Bearer {{ownerToken}}
+
+### 6c. Kitchen timing
+GET {{baseUrl}}/analytics/kitchen-timing
+Authorization: Bearer {{ownerToken}}
+
+### 6d. Upsell performance (owner only)
+GET {{baseUrl}}/analytics/upsell
+Authorization: Bearer {{ownerToken}}
+
+### 6e. Per-branch analytics rollup
+GET {{baseUrl}}/branches/{{branchId}}/analytics
+Authorization: Bearer {{ownerToken}}
+
+
+# ===========================================================================
+# 7. UPSELL ENGINE
+# ===========================================================================
+
+### 7a. Get suggestions for the diner (trigger-based)
+POST {{baseUrl}}/upsell/suggestions
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "trigger": "add_to_cart",
+  "triggerItemId": "{{menuItemId}}",
+  "cartItemIds": ["{{menuItemId}}"],
+  "declinedItemIds": [],
+  "impressionsThisRound": 0
+}
+
+### 7b. Log an upsell event (shown/accepted/declined/ignored)
+POST {{baseUrl}}/upsell/events
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "eventType": "upsell_shown",
+  "payload": { "suggestedItemId": "{{menuItemId}}", "triggerItemId": "{{menuItemId}}" }
+}
+
+### 7c. Get upsell rules (owner)
+GET {{baseUrl}}/upsell/rules
+Authorization: Bearer {{ownerToken}}
+
+### 7d. Update upsell rules (partial)
+PATCH {{baseUrl}}/upsell/rules
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "isEnabled": true,
+  "maxSuggestionsAddCart": 2,
+  "maxSuggestionsCheckout": 1,
+  "minimumLiftBps": 1000
+}
+
+### 7e. Get item pairings (owner/editor)
+GET {{baseUrl}}/upsell/pairings
+Authorization: Bearer {{ownerToken}}
+
+### 7f. Create a pairing rule ("people who buy X are shown Y, Z")
+POST {{baseUrl}}/upsell/pairings
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "sourceItemId": "{{menuItemId}}",
+  "targetItemIds": ["PASTE_ANOTHER_ITEM_UUID"],
+  "sortOrder": 1
+}
+
+### 7g. Delete a pairing
+DELETE {{baseUrl}}/upsell/pairings/PASTE_PAIRING_ID
+Authorization: Bearer {{ownerToken}}
+
+### 7h. Get category affinity rules (owner)
+GET {{baseUrl}}/upsell/affinity
+Authorization: Bearer {{ownerToken}}
+
+### 7i. Create a category affinity rule
+POST {{baseUrl}}/upsell/affinity
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "sourceCategoryId": "{{categoryId}}",
+  "targetCategoryId": "PASTE_DRINKS_CATEGORY_UUID",
+  "priority": 1
+}
+
+### 7j. Delete an affinity rule
+DELETE {{baseUrl}}/upsell/affinity/PASTE_AFFINITY_ID
+Authorization: Bearer {{ownerToken}}
+
+
+# ===========================================================================
+# 8. PAYMENTS
+# ===========================================================================
+
+### 8a. Get the current bill for the table session
+GET {{baseUrl}}/payments/bill
+Authorization: Bearer {{dinerToken}}
+
+### 8b. Pay — full bill, one person, cash
+POST {{baseUrl}}/payments
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "splitMethod": "full",
+  "method": "cash"
+}
+
+### 8c. Pay — split equally among the table
+POST {{baseUrl}}/payments
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "splitMethod": "equal",
+  "method": "card"
+}
+
+### 8d. Pay — custom per-person allocation
+POST {{baseUrl}}/payments
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "splitMethod": "custom",
+  "method": "wallet",
+  "allocations": [
+    { "memberId": "PASTE_MEMBER_ID", "amount": 250000 },
+    { "memberId": "PASTE_OTHER_MEMBER_ID", "amount": 150000 }
+  ]
+}
+
+### 8e. Pay with a discount offer applied
+POST {{baseUrl}}/payments
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "splitMethod": "full",
+  "method": "card",
+  "offerId": "PASTE_OFFER_ID"
+}
+
+
+# ===========================================================================
+# 9. REVIEWS
+# ===========================================================================
+
+### 9a. Submit a review (diner, presumably post-payment)
+POST {{baseUrl}}/reviews
+Authorization: Bearer {{dinerToken}}
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "comment": "Great food, fast service!"
+}
+
+### 9b. List reviews (staff)
+GET {{baseUrl}}/reviews?rating=5
+Authorization: Bearer {{ownerToken}}
+
+
+# ===========================================================================
+# 10. OFFERS & CARD DISCOUNTS (owner/branch_manager)
+# ===========================================================================
+
+### 10a. List offers
+GET {{baseUrl}}/offers
+Authorization: Bearer {{ownerToken}}
+
+### 10b. Create a % or flat offer
+POST {{baseUrl}}/offers
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "Weekday Lunch 20% Off",
+  "discountType": "percentage",
+  "discountValue": 2000,
+  "validFrom": "2026-07-01T00:00:00Z",
+  "validUntil": "2026-08-31T23:59:59Z",
+  "isActive": true
+}
+# discountType is "percentage" or "fixed" (DISCOUNT_TYPES in src/config/constants.ts).
+# For "percentage", discountValue is basis points (2000 = 20%). For "fixed", it's paisa.
+
+### 10c. Update an offer
+PATCH {{baseUrl}}/offers/PASTE_OFFER_ID
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "isActive": false
+}
+
+### 10d. Delete an offer
+DELETE {{baseUrl}}/offers/PASTE_OFFER_ID
+Authorization: Bearer {{ownerToken}}
+
+### 10e. List card discounts
+GET {{baseUrl}}/card-discounts
+Authorization: Bearer {{ownerToken}}
+
+### 10f. Create a card discount (bank promo)
+POST {{baseUrl}}/card-discounts
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "bankName": "HBL",
+  "cardType": "credit",
+  "discountBps": 1500,
+  "validFrom": "2026-07-01T00:00:00Z",
+  "validUntil": "2026-12-31T23:59:59Z",
+  "isActive": true
+}
+
+### 10g. Update a card discount
+PATCH {{baseUrl}}/card-discounts/PASTE_DISCOUNT_ID
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "discountBps": 2000
+}
+
+### 10h. Delete a card discount
+DELETE {{baseUrl}}/card-discounts/PASTE_DISCOUNT_ID
+Authorization: Bearer {{ownerToken}}
+
+
+# ===========================================================================
+# 11. RESTAURANT / BRANCHES / TABLES (owner)
+# ===========================================================================
+
+### 11a. Get restaurant profile
+GET {{baseUrl}}/restaurant
+Authorization: Bearer {{ownerToken}}
+
+### 11b. Update restaurant settings
+PATCH {{baseUrl}}/restaurant
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "Cheat Day Diner",
+  "taxRateBps": 1600,
+  "serviceChargeBps": 500
+}
+
+### 11c. List branches
+GET {{baseUrl}}/branches
+Authorization: Bearer {{ownerToken}}
+
+### 11d. Create a branch
+POST {{baseUrl}}/branches
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "DHA Branch",
+  "slug": "dha-branch",
+  "address": "123 Main Blvd, DHA Phase 6",
+  "opensAt": "09:00",
+  "closesAt": "23:30",
+  "timezone": "Asia/Karachi"
+}
+
+### 11e. Update a branch
+PATCH {{baseUrl}}/branches/{{branchId}}
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "closesAt": "00:00",
+  "isActive": true
+}
+
+### 11f. Delete a branch
+DELETE {{baseUrl}}/branches/{{branchId}}
+Authorization: Bearer {{ownerToken}}
+
+### 11g. List tables at a branch
+GET {{baseUrl}}/branches/{{branchId}}/tables
+Authorization: Bearer {{ownerToken}}
+
+### 11h. Create a table
+POST {{baseUrl}}/branches/{{branchId}}/tables
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "code": "T6",
+  "label": "Patio 2",
+  "capacity": 4
+}
+
+### 11i. Update a table
+PATCH {{baseUrl}}/branches/{{branchId}}/tables/PASTE_TABLE_ID
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "capacity": 6
+}
+
+### 11j. Delete a table
+DELETE {{baseUrl}}/branches/{{branchId}}/tables/PASTE_TABLE_ID
+Authorization: Bearer {{ownerToken}}
+
+### 11k. Regenerate a table's QR token (invalidates the old QR code)
+POST {{baseUrl}}/branches/{{branchId}}/tables/PASTE_TABLE_ID/regenerate-qr
+Authorization: Bearer {{ownerToken}}
+
+### 11l. Force-close a table's active session (e.g. diners left without paying)
+POST {{baseUrl}}/tables/PASTE_TABLE_ID/close-session
+Authorization: Bearer {{ownerToken}}
+
+### 11m. Audit log (owner only)
+GET {{baseUrl}}/audit-log
+Authorization: Bearer {{ownerToken}}
+
+### 11n. Notifications (owner/branch_manager)
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{ownerToken}}
+
+
+# ===========================================================================
+# 12. STAFF MANAGEMENT (owner/branch_manager)
+# ===========================================================================
+
+### 12a. List staff
+GET {{baseUrl}}/staff
+Authorization: Bearer {{ownerToken}}
+
+### 12b. Update a staff member's role/branch/active status (owner only)
+PATCH {{baseUrl}}/staff/PASTE_EMPLOYEE_ID
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "role": "kitchen",
+  "branchId": "{{branchId}}",
+  "isActive": true
+}
+
+### 12c. Remove a staff member (owner only)
+DELETE {{baseUrl}}/staff/PASTE_EMPLOYEE_ID
+Authorization: Bearer {{ownerToken}}
+
+
+# ===========================================================================
+# 13. ONBOARDING (owner — one-time tenant setup)
+# ===========================================================================
+
+### 13a. Bootstrap a fresh restaurant (creates a default branch/tables/sample menu)
+POST {{baseUrl}}/bootstrap
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "branchName": "Main Branch",
+  "branchSlug": "main",
+  "tableCount": 8,
+  "seedSampleMenu": true
+}
+
+
+# ===========================================================================
+# 14. MEDIA (images / videos / 3D models)
+# multipart/form-data — .http files CAN send these but it's fiddly with binary.
+# For real files, this is genuinely easier to test directly in Postman/Thunder's
+# GUI (Body > form-data > pick "File" type on the `file` / `glb` field) rather
+# than through this text file. Shapes below so you know exactly which fields
+# to add in the GUI.
+# ===========================================================================
+
+### 14a. List images for a menu item
+GET {{baseUrl}}/menu/items/{{menuItemId}}/images
+Authorization: Bearer {{dinerToken}}
+
+### 14b. Upload an image — form-data fields: file (File), altText (Text), isPrimary (Text: "true"/"false")
+POST {{baseUrl}}/menu/items/{{menuItemId}}/images
+Authorization: Bearer {{editorToken}}
+Content-Type: multipart/form-data; boundary=----boundary
+
+------boundary
+Content-Disposition: form-data; name="altText"
+
+Signature Burger, top-down shot
+------boundary
+Content-Disposition: form-data; name="isPrimary"
+
+true
+------boundary
+Content-Disposition: form-data; name="file"; filename="burger.jpg"
+Content-Type: image/jpeg
+
+< ./test-assets/burger.jpg
+------boundary--
+
+### 14c. Delete an image (owner/branch_manager only)
+DELETE {{baseUrl}}/media/images/PASTE_IMAGE_ID
+Authorization: Bearer {{ownerToken}}
+
+### 14d. Upload a video — form-data fields: file (File), durationSec (Text, digits only)
+POST {{baseUrl}}/menu/items/{{menuItemId}}/videos
+Authorization: Bearer {{editorToken}}
+Content-Type: multipart/form-data; boundary=----boundary
+
+------boundary
+Content-Disposition: form-data; name="durationSec"
+
+15
+------boundary
+Content-Disposition: form-data; name="file"; filename="burger.mp4"
+Content-Type: video/mp4
+
+< ./test-assets/burger.mp4
+------boundary--
+
+### 14e. Delete a video (owner/branch_manager only)
+DELETE {{baseUrl}}/media/videos/PASTE_VIDEO_ID
+Authorization: Bearer {{ownerToken}}
+
+### 14f. Upload a 3D model — form-data fields: glb (File, REQUIRED), usdz (File, optional
+# — iOS AR Quick Look), poster (File, optional — static preview image)
+POST {{baseUrl}}/menu/items/{{menuItemId}}/3d-models
+Authorization: Bearer {{editorToken}}
+Content-Type: multipart/form-data; boundary=----boundary
+
+------boundary
+Content-Disposition: form-data; name="glb"; filename="burger.glb"
+Content-Type: model/gltf-binary
+
+< ./test-assets/burger.glb
+------boundary--
+
+### 14g. Delete a 3D model (owner/branch_manager only)
+DELETE {{baseUrl}}/media/3d-models/PASTE_MODEL_ID
+Authorization: Bearer {{ownerToken}}
+
+
+# ===========================================================================
+# 15. SAAS PLATFORM ADMIN (NOT a staff token — needs the Supabase SERVICE
+# ROLE KEY as the Bearer token. This is the platform owner's surface, not a
+# restaurant's. Use SUPABASE_SERVICE_ROLE_KEY from your .env file.)
+# ===========================================================================
+
+@serviceRoleKey = PASTE_SUPABASE_SERVICE_ROLE_KEY_FROM_DOT_ENV
+
+### 15a. List all tenants
+GET {{baseUrl}}/saas/tenants
+Authorization: Bearer {{serviceRoleKey}}
+
+### 15b. Get one tenant
+GET {{baseUrl}}/saas/tenants/{{restaurantId}}
+Authorization: Bearer {{serviceRoleKey}}
+
+### 15c. List plans
+GET {{baseUrl}}/saas/plans
+Authorization: Bearer {{serviceRoleKey}}
+
+### 15d. Create a plan
+POST {{baseUrl}}/saas/plans
+Authorization: Bearer {{serviceRoleKey}}
+Content-Type: application/json
+
+{
+  "name": "Pro",
+  "price": 999900,
+  "features": { "maxBranches": 5, "analytics": true, "support": "priority" },
+  "isActive": true
+}
+
+### 15e. Update a plan
+PATCH {{baseUrl}}/saas/plans/PASTE_PLAN_ID
+Authorization: Bearer {{serviceRoleKey}}
+Content-Type: application/json
+
+{
+  "price": 899900
+}
+
+### 15f. List subscriptions
+GET {{baseUrl}}/saas/subscriptions
+Authorization: Bearer {{serviceRoleKey}}
+
+### 15g. Update a subscription's status
+PATCH {{baseUrl}}/saas/subscriptions/PASTE_SUBSCRIPTION_ID
+Authorization: Bearer {{serviceRoleKey}}
+Content-Type: application/json
+
+{
+  "status": "past_due"
+}
+
+### 15h. Billing overview
+GET {{baseUrl}}/saas/billing
+Authorization: Bearer {{serviceRoleKey}}
+
+### 15i. Platform costs
+GET {{baseUrl}}/saas/costs
+Authorization: Bearer {{serviceRoleKey}}
+
+### 15j. Record a platform cost
+POST {{baseUrl}}/saas/costs
+Authorization: Bearer {{serviceRoleKey}}
+Content-Type: application/json
+
+{
+  "costType": "supabase_hosting",
+  "amount": 500000,
+  "periodStart": "2026-07-01T00:00:00Z",
+  "periodEnd": "2026-07-31T23:59:59Z"
+}
+# restaurantId is optional on this one — omit for a platform-wide cost, include for a
+# tenant-attributed one.
+
+### 15k. Platform-wide analytics (GMV, active clients, churn alerts)
+GET {{baseUrl}}/saas/analytics
+Authorization: Bearer {{serviceRoleKey}}
+
+
+# ===========================================================================
+# 16. HEALTH (no auth)
+# ===========================================================================
+
+### 16a. Health check
+GET {{baseUrl}}/health

@@ -1,0 +1,42 @@
+import { Router } from 'express';
+import healthRoutes from './health.routes';
+import authRoutes from './auth.routes';
+import menuRoutes from './menu.routes';
+import menuAvailabilityRoutes from './menu-availability.routes';
+import cartRoutes from './cart.routes';
+import ordersRoutes from './orders.routes';
+import kitchenRoutes from './kitchen.routes';
+import paymentsRoutes from './payments.routes';
+import upsellRoutes from './upsell.routes';
+import restaurantsRoutes from './restaurants.routes';
+import staffRoutes from './staff.routes';
+import offersRoutes from './offers.routes';
+import cardDiscountsRoutes from './card-discounts.routes';
+import reviewsRoutes from './reviews.routes';
+import analyticsRoutes from './analytics.routes';
+import saasRoutes from './saas.routes';
+import mediaRoutes from './media.routes';
+import onboardingRoutes from './onboarding.routes';
+
+const router = Router();
+
+router.use(healthRoutes);
+router.use(authRoutes);
+router.use(menuRoutes);
+router.use(menuAvailabilityRoutes);
+router.use(cartRoutes);
+router.use(ordersRoutes);
+router.use(kitchenRoutes);
+router.use(paymentsRoutes);
+router.use(upsellRoutes);
+router.use(restaurantsRoutes);
+router.use(staffRoutes);
+router.use(offersRoutes);
+router.use(cardDiscountsRoutes);
+router.use(reviewsRoutes);
+router.use(analyticsRoutes);
+router.use('/saas', saasRoutes);
+router.use(mediaRoutes);
+router.use('/onboarding', onboardingRoutes);
+
+export default router;

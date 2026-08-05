@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Menuva API Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --border: #2a2f3a;
+    --text: #e4e7ec; --dim: #8b93a1; --accent: #C8760A; --accent2: #e08c1a;
+    --ok: #3fb950; --err: #f85149; --warn: #d29922; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size:14px; }
+  header { display:flex; align-items:center; gap:16px; padding:12px 20px;
+    background:var(--panel); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; flex-wrap:wrap; }
+  header h1 { font-size:15px; margin:0; font-weight:600; letter-spacing:.3px; }
+  header h1 span { color:var(--accent); }
+  .status { font-size:12px; color:var(--dim); font-family:var(--mono); }
+  .status b { color:var(--ok); }
+  button { background:var(--accent); color:#fff; border:0; padding:7px 14px; border-radius:6px;
+    cursor:pointer; font-size:13px; font-weight:500; }
+  button:hover { background:var(--accent2); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  button.ghost { background:var(--panel2); color:var(--text); border:1px solid var(--border); }
+  button.ghost:hover { background:var(--border); }
+  .layout { display:grid; grid-template-columns:280px 1fr; height:calc(100vh - 53px); }
+  nav { border-right:1px solid var(--border); overflow-y:auto; background:var(--panel); padding-bottom:40px; }
+  .group { padding:10px 16px 4px; font-size:11px; text-transform:uppercase; letter-spacing:.8px;
+    color:var(--dim); font-weight:600; }
+  .ep { padding:7px 16px; cursor:pointer; display:flex; gap:8px; align-items:center;
+    border-left:2px solid transparent; }
+  .ep:hover { background:var(--panel2); }
+  .ep.active { background:var(--panel2); border-left-color:var(--accent); }
+  .ep .m { font-family:var(--mono); font-size:10px; font-weight:700; width:42px; flex-shrink:0; }
+  .ep .n { font-size:12.5px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .GET{color:#4a9eff}.POST{color:var(--ok)}.PATCH{color:var(--warn)}.DELETE{color:var(--err)}
+  main { overflow-y:auto; padding:20px 24px 60px; }
+  .path { font-family:var(--mono); font-size:15px; margin:0 0 6px; word-break:break-all; }
+  .note { color:var(--dim); font-size:12.5px; margin:0 0 14px; line-height:1.5; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  label { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px;
+    display:block; margin-bottom:5px; font-weight:600; }
+  select, textarea, input {
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    border-radius:6px; padding:7px 9px; font-size:13px; font-family:inherit; }
+  select, input { min-width:180px; }
+  textarea { width:100%; font-family:var(--mono); font-size:12.5px; line-height:1.55; resize:vertical; }
+  .badge { font-size:10.5px; padding:2px 7px; border-radius:99px; border:1px solid var(--border);
+    color:var(--dim); font-family:var(--mono); }
+  .resp { margin-top:18px; }
+  .resphead { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .code { font-family:var(--mono); font-weight:700; font-size:15px; }
+  .code.s2 { color:var(--ok); } .code.s4 { color:var(--warn); } .code.s5 { color:var(--err); }
+  pre { background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:14px; overflow-x:auto; font-family:var(--mono); font-size:12.5px; line-height:1.55;
+    margin:0; max-height:52vh; }
+  .k{color:#79c0ff}.s{color:#a5d6ff}.n{color:#ffa657}.b{color:#ff7b72}
+  .vars { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .var { font-family:var(--mono); font-size:11px; background:var(--panel2);
+    border:1px solid var(--border); border-radius:5px; padding:3px 7px; color:var(--dim); }
+  .var b { color:var(--accent); font-weight:600; }
+  .empty { color:var(--dim); text-align:center; padding:80px 20px; line-height:1.7; }
+  .flowlog { font-family:var(--mono); font-size:12.5px; line-height:1.9; }
+  .flowlog div { display:flex; gap:10px; }
+  .flowlog .ok{color:var(--ok)} .flowlog .bad{color:var(--err)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Menuva <span>API Dashboard</span></h1>
+  <button id="seedBtn">Seed fresh tenant</button>
+  <button class="ghost" id="flowBtn">▶ Run full flow</button>
+  <span class="status" id="status">no tenant seeded</span>
+</header>
+
+<div class="layout">
+  <nav id="nav"></nav>
+  <main id="main">
+    <div class="empty">
+      Click <b>Seed fresh tenant</b> to create a throwaway restaurant<br/>
+      with menu, tables and an open diner session — then pick an endpoint.
+    </div>
+  </main>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+let ctx = null;            // seeded tenant context from /dev/seed
+let vars = {};             // resolvable {{placeholders}}
+let current = null;        // selected endpoint
+
+const API = '/api';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Endpoint catalogue — mirrors src/routes/*.routes.ts, bodies mirror src/schemas/*
+// auth: which seeded identity to send. capture: pull values out of the response
+// into vars so later endpoints can use them with no copy-paste.
+// ─────────────────────────────────────────────────────────────────────────────
+const GROUPS = [
+{ name: '① Core flow', eps: [
+  { id:'health', m:'GET', p:'/health', auth:'none',
+    note:'No auth. Returns 200 when the DB probe succeeds, 503 when it fails.' },
+
+  { id:'menu', m:'GET', p:'/menu', auth:'diner',
+    note:'The diner token scopes the restaurant — no ID in the URL.' },
+
+  { id:'cartGet', m:'GET', p:'/cart', auth:'diner' },
+
+  { id:'cartAdd', m:'POST', p:'/cart/items', auth:'diner',
+    selects:[{v:'menuItemId', src:'menuItems'}],
+    body:{ menuItemId:'{{menuItemId}}', quantity:2, notes:'no onions' },
+    capture:{ cartItemId:['data.item.id','data.id','data.items.0.id','data.cartItem.id'] },
+    note:'Pick an item from the dropdown — the UUID is filled in for you. Money is paisa.' },
+
+  { id:'orderPlace', m:'POST', p:'/orders/place', auth:'diner',
+    body:{ idempotencyKey:'{{newUuid}}', kitchenNotes:'table by the window' },
+    capture:{ orderId:['data.id','data.order.id'] },
+    note:'idempotencyKey auto-generates a fresh UUID each time you open this. Send the SAME key twice → must not create a second order.' },
+
+  { id:'ordersList', m:'GET', p:'/orders', auth:'diner' },
+
+  { id:'kitchenBoard', m:'GET', p:'/kitchen/board', auth:'kitchen',
+    capture:{ orderId:['data.0.id','data.orders.0.id'] },
+    note:'Your placed order should appear here as "placed".' },
+
+  { id:'advance', m:'POST', p:'/orders/{{orderId}}/advance', auth:'kitchen',
+    body:{ to:'preparing' },
+    note:'placed → preparing → ready → served. Omit "to" to auto-advance to the next state.' },
+]},
+
+{ name: '② Analytics', eps: [
+  { id:'anSales', m:'GET', p:'/analytics/sales?from={{monthStart}}&to={{monthEnd}}', auth:'owner' },
+  { id:'anMenu', m:'GET', p:'/analytics/menu-performance', auth:'owner' },
+  { id:'anKitchen', m:'GET', p:'/analytics/kitchen-timing', auth:'owner' },
+  { id:'anUpsell', m:'GET', p:'/analytics/upsell', auth:'owner' },
+  { id:'anBranch', m:'GET', p:'/branches/{{branchId}}/analytics', auth:'owner' },
+  { id:'anSales403', m:'GET', p:'/analytics/sales?from={{monthStart}}&to={{monthEnd}}', auth:'kitchen',
+    note:'RBAC check — the SAME endpoint with a kitchen token must return 403.' },
+]},
+
+{ name: '③ Auth', eps: [
+  { id:'login', m:'POST', p:'/auth/staff/login', auth:'none',
+    body:{ email:'{{ownerEmail}}', password:'{{ownerPassword}}' },
+    note:'Real Supabase login for the seeded owner. Returns a genuine access token.' },
+  { id:'dinerJoin', m:'POST', p:'/auth/diner/join', auth:'none',
+    selects:[{v:'qrToken', src:'tables'}],
+    body:{ qrToken:'{{qrToken}}', deviceId:'dev-dashboard-2', dinerName:'Second Diner', initials:'SD' },
+    note:'Join a table by QR — pick which table from the dropdown.' },
+  { id:'invite', m:'POST', p:'/auth/staff/invite', auth:'owner',
+    body:{ email:'new-waiter@example.com', name:'New Waiter', branchId:'{{branchId}}', role:'editor' },
+    note:'role ∈ branch_manager | manager | kitchen | editor (owner is not invitable).' },
+  { id:'logout', m:'POST', p:'/auth/staff/logout', auth:'owner' },
+]},
+
+{ name: '④ Menu admin', eps: [
+  { id:'itemGet', m:'GET', p:'/menu/items/{{menuItemId}}', auth:'diner',
+    selects:[{v:'menuItemId', src:'menuItems'}] },
+  { id:'itemCreate', m:'POST', p:'/menu/items', auth:'owner',
+    selects:[{v:'categoryId', src:'categories'}],
+    body:{ categoryId:'{{categoryId}}', name:'Spicy Zinger Burger',
+      description:'Crispy fried chicken, spicy mayo, pickles', price:145000, costPrice:60000,
+      tag:'bestseller', emoji:'🍔', isSpicy:true, isGlutenFree:false, sortOrder:1 },
+    capture:{ menuItemId:['data.id'] } },
+  { id:'itemPatch', m:'PATCH', p:'/menu/items/{{menuItemId}}', auth:'owner',
+    selects:[{v:'menuItemId', src:'menuItems'}],
+    body:{ name:'Renamed From Dashboard', isSpicy:true } },
+  { id:'itemPrice', m:'PATCH', p:'/menu/items/{{menuItemId}}/price', auth:'owner',
+    selects:[{v:'menuItemId', src:'menuItems'}],
+    body:{ price:160000 },
+    note:'Price has its own endpoint — likely audit-logged separately from other edits.' },
+  { id:'itemDelete', m:'DELETE', p:'/menu/items/{{menuItemId}}', auth:'owner',
+    selects:[{v:'menuItemId', src:'menuItems'}] },
+  { id:'catCreate', m:'POST', p:'/menu/categories', auth:'owner',
+    body:{ name:'Desserts', sortOrder:3 }, capture:{ categoryId:['data.id'] } },
+  { id:'catPatch', m:'PATCH', p:'/menu/categories/{{categoryId}}', auth:'owner',
+    selects:[{v:'categoryId', src:'categories'}], body:{ name:'Desserts & Sweets' } },
+  { id:'catDelete', m:'DELETE', p:'/menu/categories/{{categoryId}}', auth:'owner',
+    selects:[{v:'categoryId', src:'categories'}] },
+  { id:'mods', m:'PATCH', p:'/menu/items/{{menuItemId}}/modifier-groups', auth:'owner',
+    selects:[{v:'menuItemId', src:'menuItems'}],
+    body:{ groups:[{ name:'Extras', groupType:'add_on', isRequired:false, maxSelections:2, sortOrder:1,
+      modifiers:[{name:'Extra Cheese',priceDelta:20000,sortOrder:1},{name:'Jalapenos',priceDelta:10000,sortOrder:2}] }] },
+    note:'Full replace, not a patch. groupType ∈ variant | add_on.' },
+  { id:'avail', m:'PATCH', p:'/branches/{{branchId}}/menu/{{menuItemId}}/availability', auth:'owner',
+    selects:[{v:'menuItemId', src:'menuItems'}], body:{ available:false },
+    note:'"86" an item at one branch only.' },
+  { id:'override', m:'PATCH', p:'/branches/{{branchId}}/menu/{{menuItemId}}/price-override', auth:'owner',
+    selects:[{v:'menuItemId', src:'menuItems'}], body:{ priceOverride:135000 },
+    note:'Set priceOverride to null to clear it.' },
+]},
+
+{ name: '⑤ Cart & payments', eps: [
+  { id:'cartPatch', m:'PATCH', p:'/cart/items/{{cartItemId}}', auth:'diner',
+    body:{ quantity:3, notes:'extra spicy' },
+    note:'cartItemId is captured automatically when you add to cart.' },
+  { id:'cartDel', m:'DELETE', p:'/cart/items/{{cartItemId}}', auth:'diner' },
+  { id:'bill', m:'GET', p:'/payments/bill', auth:'diner' },
+  { id:'payFull', m:'POST', p:'/payments', auth:'diner',
+    body:{ splitMethod:'full', method:'cash' },
+    note:'splitMethod ∈ full | equal | by_person | custom.  method ∈ cash | card | wallet.' },
+  { id:'payEqual', m:'POST', p:'/payments', auth:'diner',
+    body:{ splitMethod:'equal', method:'card' } },
+  { id:'payCustom', m:'POST', p:'/payments', auth:'diner',
+    body:{ splitMethod:'custom', method:'wallet',
+      allocations:[{ memberId:'{{memberId}}', amount:250000 }] } },
+]},
+
+{ name: '⑥ Upsell', eps: [
+  { id:'upSug', m:'POST', p:'/upsell/suggestions', auth:'diner',
+    selects:[{v:'menuItemId', src:'menuItems'}],
+    body:{ trigger:'add_to_cart', triggerItemId:'{{menuItemId}}',
+      cartItemIds:['{{menuItemId}}'], declinedItemIds:[], impressionsThisRound:0 },
+    note:'trigger ∈ add_to_cart | cart | checkout.' },
+  { id:'upEvent', m:'POST', p:'/upsell/events', auth:'diner',
+    body:{ eventType:'upsell_shown', payload:{ suggestedItemId:'{{menuItemId}}' } },
+    note:'eventType ∈ upsell_shown | upsell_accepted | upsell_declined | upsell_ignored.' },
+  { id:'upRules', m:'GET', p:'/upsell/rules', auth:'owner' },
+  { id:'upRulesPatch', m:'PATCH', p:'/upsell/rules', auth:'owner',
+    body:{ isEnabled:true, maxSuggestionsAddCart:2, minimumLiftBps:1000 } },
+  { id:'upPairs', m:'GET', p:'/upsell/pairings', auth:'owner' },
+  { id:'upPairCreate', m:'POST', p:'/upsell/pairings', auth:'owner',
+    selects:[{v:'menuItemId', src:'menuItems'},{v:'menuItemId2', src:'menuItems'}],
+    body:{ sourceItemId:'{{menuItemId}}', targetItemIds:['{{menuItemId2}}'], sortOrder:1 },
+    capture:{ pairingId:['data.id','data.0.id'] } },
+  { id:'upPairDel', m:'DELETE', p:'/upsell/pairings/{{pairingId}}', auth:'owner' },
+  { id:'upAff', m:'GET', p:'/upsell/affinity', auth:'owner' },
+  { id:'upAffCreate', m:'POST', p:'/upsell/affinity', auth:'owner',
+    selects:[{v:'categoryId', src:'categories'},{v:'categoryId2', src:'categories'}],
+    body:{ sourceCategoryId:'{{categoryId}}', targetCategoryId:'{{categoryId2}}', priority:1 },
+    capture:{ affinityId:['data.id'] } },
+  { id:'upAffDel', m:'DELETE', p:'/upsell/affinity/{{affinityId}}', auth:'owner' },
+]},
+
+{ name: '⑦ Reviews & offers', eps: [
+  { id:'revCreate', m:'POST', p:'/reviews', auth:'diner',
+    body:{ rating:5, comment:'Great food, fast service!' } },
+  { id:'revList', m:'GET', p:'/reviews', auth:'owner' },
+  { id:'offList', m:'GET', p:'/offers', auth:'owner' },
+  { id:'offCreate', m:'POST', p:'/offers', auth:'owner',
+    body:{ name:'Weekday Lunch 20% Off', discountType:'percentage', discountValue:2000,
+      validFrom:'{{monthStart}}', validUntil:'{{monthEnd}}', isActive:true },
+    capture:{ offerId:['data.id'] },
+    note:'discountType ∈ percentage | fixed. For percentage, discountValue is bps (2000 = 20%).' },
+  { id:'offPatch', m:'PATCH', p:'/offers/{{offerId}}', auth:'owner', body:{ isActive:false } },
+  { id:'offDel', m:'DELETE', p:'/offers/{{offerId}}', auth:'owner' },
+  { id:'cdList', m:'GET', p:'/card-discounts', auth:'owner' },
+  { id:'cdCreate', m:'POST', p:'/card-discounts', auth:'owner',
+    body:{ bankName:'HBL', cardType:'credit', discountBps:1500,
+      validFrom:'{{monthStart}}', validUntil:'{{monthEnd}}', isActive:true },
+    capture:{ discountId:['data.id'] } },
+  { id:'cdPatch', m:'PATCH', p:'/card-discounts/{{discountId}}', auth:'owner', body:{ discountBps:2000 } },
+  { id:'cdDel', m:'DELETE', p:'/card-discounts/{{discountId}}', auth:'owner' },
+]},
+
+{ name: '⑧ Restaurant & staff', eps: [
+  { id:'rest', m:'GET', p:'/restaurant', auth:'owner' },
+  { id:'restPatch', m:'PATCH', p:'/restaurant', auth:'owner',
+    body:{ name:'Cheat Day Diner', taxRateBps:1600, serviceChargeBps:500 } },
+  { id:'brList', m:'GET', p:'/branches', auth:'owner' },
+  { id:'brCreate', m:'POST', p:'/branches', auth:'owner',
+    body:{ name:'DHA Branch', slug:'dha-branch-{{rand}}', address:'123 Main Blvd',
+      opensAt:'09:00', closesAt:'23:30', timezone:'Asia/Karachi' },
+    capture:{ newBranchId:['data.id'] } },
+  { id:'brPatch', m:'PATCH', p:'/branches/{{branchId}}', auth:'owner', body:{ closesAt:'00:00', isActive:true } },
+  { id:'tblList', m:'GET', p:'/branches/{{branchId}}/tables', auth:'owner' },
+  { id:'tblCreate', m:'POST', p:'/branches/{{branchId}}/tables', auth:'owner',
+    body:{ code:'T{{rand}}', label:'Patio', capacity:4 }, capture:{ newTableId:['data.id'] } },
+  { id:'tblPatch', m:'PATCH', p:'/branches/{{branchId}}/tables/{{tableId}}', auth:'owner',
+    selects:[{v:'tableId', src:'tablesId'}], body:{ capacity:6 } },
+  { id:'qr', m:'POST', p:'/branches/{{branchId}}/tables/{{tableId}}/regenerate-qr', auth:'owner',
+    selects:[{v:'tableId', src:'tablesId'}],
+    note:'Invalidates the old QR code for that table.' },
+  { id:'closeSess', m:'POST', p:'/tables/{{tableId}}/close-session', auth:'owner',
+    selects:[{v:'tableId', src:'tablesId'}],
+    note:'Force-closes the active session — the diner token then gets 401 SESSION_EXPIRED.' },
+  { id:'staffList', m:'GET', p:'/staff', auth:'owner' },
+  { id:'audit', m:'GET', p:'/audit-log', auth:'owner' },
+  { id:'notif', m:'GET', p:'/notifications', auth:'owner' },
+  { id:'bootstrap', m:'POST', p:'/onboarding/bootstrap', auth:'owner',
+    body:{ branchName:'Second Branch', branchSlug:'second-{{rand}}', tableCount:8, seedSampleMenu:true } },
+]},
+
+{ name: '⑨ Media', eps: [
+  { id:'imgList', m:'GET', p:'/menu/items/{{menuItemId}}/images', auth:'diner',
+    selects:[{v:'menuItemId', src:'menuItems'}] },
+  { id:'imgUp', m:'POST', p:'/menu/items/{{menuItemId}}/images', auth:'editor', upload:'single',
+    selects:[{v:'menuItemId', src:'menuItems'}],
+    fields:{ altText:'Signature Burger, top-down', isPrimary:'true' },
+    note:'Pick a real image file below. Sent as multipart/form-data.' },
+  { id:'vidUp', m:'POST', p:'/menu/items/{{menuItemId}}/videos', auth:'editor', upload:'single',
+    selects:[{v:'menuItemId', src:'menuItems'}], fields:{ durationSec:'15' } },
+  { id:'modelUp', m:'POST', p:'/menu/items/{{menuItemId}}/3d-models', auth:'editor', upload:'model',
+    selects:[{v:'menuItemId', src:'menuItems'}],
+    note:'glb is required; usdz (iOS AR) and poster are optional.' },
+]},
+
+{ name: '⑩ SaaS platform', eps: [
+  { id:'saasTenants', m:'GET', p:'/saas/tenants', auth:'service',
+    note:'This whole group authenticates with the SUPABASE SERVICE ROLE KEY, not a staff token.' },
+  { id:'saasTenant', m:'GET', p:'/saas/tenants/{{restaurantId}}', auth:'service' },
+  { id:'saasPlans', m:'GET', p:'/saas/plans', auth:'service' },
+  { id:'saasPlanCreate', m:'POST', p:'/saas/plans', auth:'service',
+    body:{ name:'Pro', price:999900, features:{ maxBranches:5, analytics:true }, isActive:true },
+    capture:{ planId:['data.id'] } },
+  { id:'saasPlanPatch', m:'PATCH', p:'/saas/plans/{{planId}}', auth:'service', body:{ price:899900 } },
+  { id:'saasSubs', m:'GET', p:'/saas/subscriptions', auth:'service' },
+  { id:'saasBilling', m:'GET', p:'/saas/billing', auth:'service' },
+  { id:'saasCosts', m:'GET', p:'/saas/costs', auth:'service' },
+  { id:'saasCostCreate', m:'POST', p:'/saas/costs', auth:'service',
+    body:{ costType:'supabase_hosting', amount:500000,
+      periodStart:'{{monthStart}}', periodEnd:'{{monthEnd}}' } },
+  { id:'saasAnalytics', m:'GET', p:'/saas/analytics', auth:'service' },
+]},
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+const uuid = () => crypto.randomUUID();
+const $ = (id) => document.getElementById(id);
+
+function rebuildVars() {
+  if (!ctx) return;
+  const now = new Date();
+  const ms = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const me = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+  vars = Object.assign({}, vars, {
+    restaurantId: ctx.restaurantId,
+    branchId: ctx.branchId,
+    ownerEmail: ctx.owner.email,
+    ownerPassword: ctx.owner.password,
+    memberId: ctx.session.memberId,
+    sessionId: ctx.session.sessionId,
+    tableId: vars.tableId || ctx.session.tableId,
+    qrToken: vars.qrToken || ctx.tables[0].qrToken,
+    menuItemId: vars.menuItemId || ctx.menuItems[0].id,
+    menuItemId2: vars.menuItemId2 || ctx.menuItems[1].id,
+    categoryId: vars.categoryId || ctx.categories[0].id,
+    categoryId2: vars.categoryId2 || ctx.categories[1].id,
+    modifierGroupId: ctx.modifierGroup ? ctx.modifierGroup.id : '',
+    modifierId: ctx.modifierGroup ? ctx.modifierGroup.modifiers[0].id : '',
+    monthStart: ms, monthEnd: me,
+  });
+}
+
+function resolve(str) {
+  return String(str).replace(/\{\{(\w+)\}\}/g, (m, k) => {
+    if (k === 'newUuid') return uuid();
+    if (k === 'rand') return Math.floor(Math.random() * 9000 + 1000);
+    return vars[k] !== undefined && vars[k] !== '' ? vars[k] : m;
+  });
+}
+
+function tokenFor(auth) {
+  if (!ctx || auth === 'none') return null;
+  if (auth === 'service') return ctx.serviceRoleKey;
+  return ctx.tokens[auth] || null;
+}
+
+function dig(obj, path) {
+  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+
+function hl(json) {
+  return JSON.stringify(json, null, 2)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="s">"$1"</span>')
+    .replace(/: (-?\d+\.?\d*)/g, ': <span class="n">$1</span>')
+    .replace(/: (true|false|null)/g, ': <span class="b">$1</span>');
+}
+
+function selectSource(src) {
+  if (!ctx) return [];
+  if (src === 'menuItems') return ctx.menuItems.map(i => ({ v:i.id, l:`${i.name} — PKR ${(i.price/100).toLocaleString()}` }));
+  if (src === 'categories') return ctx.categories.map(c => ({ v:c.id, l:c.name }));
+  if (src === 'tables') return ctx.tables.map(t => ({ v:t.qrToken, l:`${t.code} (QR token)` }));
+  if (src === 'tablesId') return ctx.tables.map(t => ({ v:t.id, l:t.code }));
+  return [];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rendering
+// ─────────────────────────────────────────────────────────────────────────────
+function renderNav() {
+  $('nav').innerHTML = GROUPS.map(g =>
+    `<div class="group">${g.name}</div>` +
+    g.eps.map(e => `<div class="ep" data-id="${e.id}">
+        <span class="m ${e.m}">${e.m}</span><span class="n">${e.p.replace(/\?.*$/,'')}</span>
+      </div>`).join('')
+  ).join('');
+  $('nav').querySelectorAll('.ep').forEach(el =>
+    el.onclick = () => select(el.dataset.id));
+}
+
+function findEp(id) {
+  for (const g of GROUPS) { const e = g.eps.find(x => x.id === id); if (e) return e; }
+}
+
+function select(id) {
+  current = findEp(id);
+  document.querySelectorAll('.ep').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id));
+  renderMain();
+}
+
+function renderMain() {
+  const e = current;
+  if (!e) return;
+  const authLabel = e.auth === 'none' ? 'no auth'
+    : e.auth === 'service' ? 'service role key' : `${e.auth} token`;
+
+  let html = `<div class="path"><span class="${e.m}">${e.m}</span> ${API}${resolve(e.p)}</div>`;
+  html += `<div class="row"><span class="badge">${authLabel}</span></div>`;
+  if (e.note) html += `<p class="note">${e.note}</p>`;
+
+  // dropdowns that set vars
+  if (e.selects) {
+    html += '<div class="row">';
+    for (const s of e.selects) {
+      const opts = selectSource(s.src).map(o =>
+        `<option value="${o.v}" ${vars[s.v] === o.v ? 'selected':''}>${o.l}</option>`).join('');
+      html += `<div><label>${s.v}</label><select data-var="${s.v}">${opts}</select></div>`;
+    }
+    html += '</div>';
+  }
+
+  // file pickers
+  if (e.upload === 'single') {
+    html += `<div class="row"><div><label>file</label><input type="file" id="f_file"/></div></div>`;
+    if (e.fields) for (const [k, v] of Object.entries(e.fields))
+      html += `<div class="row"><div><label>${k}</label><input id="fld_${k}" value="${v}"/></div></div>`;
+  }
+  if (e.upload === 'model') {
+    html += `<div class="row">
+      <div><label>glb (required)</label><input type="file" id="f_glb"/></div>
+      <div><label>usdz (optional)</label><input type="file" id="f_usdz"/></div>
+      <div><label>poster (optional)</label><input type="file" id="f_poster"/></div></div>`;
+  }
+
+  // body editor
+  if (e.body) {
+    const resolved = JSON.parse(resolve(JSON.stringify(e.body)));
+    html += `<label>Request body (editable)</label>
+      <textarea id="body" rows="${Math.min(22, JSON.stringify(resolved,null,2).split('\n').length + 1)}">${
+        JSON.stringify(resolved, null, 2)}</textarea>`;
+  }
+
+  html += `<div class="row" style="margin-top:14px"><button id="send">Send request</button></div>`;
+  html += `<div class="resp" id="resp"></div>`;
+
+  $('main').innerHTML = html;
+
+  $('main').querySelectorAll('select[data-var]').forEach(sel => {
+    if (!vars[sel.dataset.var]) vars[sel.dataset.var] = sel.value;
+    sel.onchange = () => { vars[sel.dataset.var] = sel.value; renderMain(); };
+  });
+  $('send').onclick = () => send(e);
+}
+
+function renderVars() {
+  const keys = ['orderId','cartItemId','offerId','planId','pairingId','affinityId','discountId'];
+  const have = keys.filter(k => vars[k]);
+  if (!have.length) return '';
+  return `<div class="vars">${have.map(k =>
+    `<span class="var"><b>${k}</b> ${String(vars[k]).slice(0,8)}…</span>`).join('')}</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sending
+// ─────────────────────────────────────────────────────────────────────────────
+async function send(e) {
+  const url = API + resolve(e.p);
+  const headers = {};
+  const tok = tokenFor(e.auth);
+  if (tok) headers['Authorization'] = 'Bearer ' + tok;
+
+  let body;
+  if (e.upload) {
+    const fd = new FormData();
+    if (e.upload === 'single') {
+      const f = $('f_file').files[0];
+      if (!f) return showErr('Pick a file first.');
+      fd.append('file', f);
+      if (e.fields) for (const k of Object.keys(e.fields)) fd.append(k, $('fld_' + k).value);
+    } else {
+      const glb = $('f_glb').files[0];
+      if (!glb) return showErr('glb file is required.');
+      fd.append('glb', glb);
+      if ($('f_usdz').files[0]) fd.append('usdz', $('f_usdz').files[0]);
+      if ($('f_poster').files[0]) fd.append('poster', $('f_poster').files[0]);
+    }
+    body = fd;
+  } else if (e.body) {
+    try { body = $('body').value; } catch { body = JSON.stringify(e.body); }
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const t0 = performance.now();
+  let res, json;
+  try {
+    res = await fetch(url, { method: e.m, headers, body });
+    const txt = await res.text();
+    try { json = JSON.parse(txt); } catch { json = { raw: txt }; }
+  } catch (err) {
+    return showErr('Network error: ' + err.message);
+  }
+  const ms = Math.round(performance.now() - t0);
+
+  if (res.ok && e.capture) {
+    for (const [v, paths] of Object.entries(e.capture)) {
+      for (const p of paths) {
+        const val = dig(json, p);
+        if (val) { vars[v] = val; break; }
+      }
+    }
+  }
+
+  const cls = res.status < 300 ? 's2' : res.status < 500 ? 's4' : 's5';
+  $('resp').innerHTML =
+    `<div class="resphead"><span class="code ${cls}">${res.status}</span>
+       <span class="status">${res.statusText || ''} · ${ms}ms</span></div>
+     <pre>${hl(json)}</pre>${renderVars()}`;
+}
+
+function showErr(msg) {
+  $('resp').innerHTML = `<div class="resphead"><span class="code s5">✕</span>
+    <span class="status">${msg}</span></div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Seed + full flow
+// ─────────────────────────────────────────────────────────────────────────────
+async function seed() {
+  $('seedBtn').disabled = true;
+  $('status').textContent = 'seeding…';
+  try {
+    const r = await fetch('/dev/seed', { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(JSON.stringify(j.error));
+    ctx = j.data; vars = {}; rebuildVars();
+    $('status').innerHTML = `<b>seeded</b> ${ctx.owner.email} · ${ctx.menuItems.length} items · 5 tables`;
+    renderNav(); select('health');
+  } catch (err) {
+    $('status').textContent = 'seed failed: ' + err.message;
+  }
+  $('seedBtn').disabled = false;
+}
+
+const FLOW = ['health','menu','cartAdd','cartGet','orderPlace','kitchenBoard','advance',
+              'anSales','anMenu','anKitchen','anUpsell','anSales403'];
+const EXPECT = { anSales403: 403 };
+
+async function runFlow() {
+  if (!ctx) return;
+  $('flowBtn').disabled = true;
+  $('main').innerHTML = '<div class="path">Full flow</div><div class="flowlog" id="log"></div>';
+  for (const id of FLOW) {
+    const e = findEp(id);
+    const url = API + resolve(e.p);
+    const headers = {};
+    const tok = tokenFor(e.auth);
+    if (tok) headers['Authorization'] = 'Bearer ' + tok;
+    let body;
+    if (e.body) { body = resolve(JSON.stringify(e.body)); headers['Content-Type'] = 'application/json'; }
+
+    let res, json;
+    try {
+      res = await fetch(url, { method: e.m, headers, body });
+      json = await res.json().catch(() => ({}));
+    } catch (err) {
+      $('log').innerHTML += `<div><span class="bad">✕</span><span>${e.m} ${e.p} — ${err.message}</span></div>`;
+      continue;
+    }
+    if (res.ok && e.capture) {
+      for (const [v, paths] of Object.entries(e.capture))
+        for (const p of paths) { const val = dig(json, p); if (val) { vars[v] = val; break; } }
+    }
+    const want = EXPECT[id] || 200;
+    const good = res.status === want || (want === 200 && res.status === 201);
+    const detail = json && json.error ? json.error.code : '';
+    const shown = url.replace(API, '').replace(/\?.*$/, '');
+    $('log').innerHTML += `<div><span class="${good?'ok':'bad'}">${good?'✓':'✕'}</span>
+      <span>${res.status}</span><span>${e.m} ${shown}</span>
+      <span style="color:var(--dim)">${detail}${good?'':` (expected ${want})`}</span></div>`;
+  }
+  $('log').innerHTML += `<div style="margin-top:10px;color:var(--dim)">Flow complete. Click any endpoint to inspect it in detail.</div>`;
+  $('flowBtn').disabled = false;
+}
+
+$('seedBtn').onclick = seed;
+$('flowBtn').onclick = runFlow;
+
+// restore an existing seeded tenant on reload
+fetch('/dev/context').then(r => r.json()).then(j => {
+  if (j.data) {
+    ctx = j.data; rebuildVars();
+    $('status').innerHTML = `<b>seeded</b> ${ctx.owner.email} · ${ctx.menuItems.length} items · 5 tables`;
+    renderNav(); select('health');
+  }
+});
+</script>
+</body>
+</html>
