@@ -11,6 +11,9 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SUPABASE_JWT_SECRET: z.string().min(1),
   CORS_ALLOWED_ORIGINS: z.string().min(1),
+  // Origin the table QR codes point at. Defaults to the production domain so
+  // local dev and existing deployments keep working without a new variable.
+  PUBLIC_APP_URL: z.string().url().default('https://menuva.app'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().optional(),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().optional(),
   DINER_TOKEN_TTL_HOURS: z.coerce.number().int().positive().default(4),

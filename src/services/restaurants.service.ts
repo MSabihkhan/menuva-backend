@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../types/database.types';
 import * as RestaurantModel from '../models/restaurants.model';
 import crypto from 'crypto';
+import { env } from '../config/env';
 
 function generateQrToken(): string {
   return crypto.randomBytes(16).toString('hex');
@@ -9,7 +10,7 @@ function generateQrToken(): string {
 
 function generateQrUrl(token: string): string {
   // Typical structure for a QR code URL
-  return `https://menuva.app/t/${token}`;
+  return `${env.PUBLIC_APP_URL.replace(/\/$/, '')}/t/${token}`;
 }
 
 export async function getRestaurant(db: SupabaseClient<Database>) {
