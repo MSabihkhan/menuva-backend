@@ -86,4 +86,19 @@ describe('Media', () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
   });
+
+  it('POST /api/menu/items/:id/3d-models — owner with 5MB .glb file → 201', async () => {
+    // 5MB buffer simulating a real .glb file
+    const glbBuffer = Buffer.alloc(5 * 1024 * 1024);
+
+    const res = await request(app)
+      .post(`/api/menu/items/${t.itemA.id}/3d-models`)
+      .set('Authorization', `Bearer ${t.ownerToken}`)
+      .attach('glb', glbBuffer, { filename: 'test_model.glb', contentType: 'model/gltf-binary' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.data).toHaveProperty('id');
+    expect(res.body.data).toHaveProperty('glb_url');
+  });
 });

@@ -122,18 +122,36 @@ export const cartService = {
 
     await this.validateModifiers(db, data.menuItemId, data.modifiers || []);
 
-    const inserted = await cartModel.insertCartItem(db, {
-      session_id: sessionId,
-      member_id: memberId,
-      restaurant_id: restaurantId,
-      menu_item_id: data.menuItemId,
-      quantity: data.quantity,
-      modifiers_json: data.modifiers || [],
-    });
+    // Merge into the diner's existing line for this exact dish + modifier
+    // selection instead of stacking a duplicate. Adding the same burger from
+    // the menu and again from an upsell used to produce two "1×" lines rather
+    // than one "2×", because every add was an unconditional INSERT.
+    const existing = await cartModel.findMatchingCartItem(
+      db,
+      sessionId,
+      memberId,
+      data.menuItemId,
+      data.modifiers || [],
+    );
+
+    const inserted = existing
+      ? await cartModel.updateCartItem(db, existing.id, {
+          quantity: existing.quantity + data.quantity,
+        })
+      : await cartModel.insertCartItem(db, {
+          session_id: sessionId,
+          member_id: memberId,
+          restaurant_id: restaurantId,
+          menu_item_id: data.menuItemId,
+          quantity: data.quantity,
+          modifiers_json: data.modifiers || [],
+        });
+
+    if (!inserted) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to add item to cart');
 
     await broadcastToSession(sessionId, 'cart_updated', {
       memberId,
-      action: 'add',
+      action: existing ? 'update' : 'add',
       cartItemId: inserted.id,
     });
 

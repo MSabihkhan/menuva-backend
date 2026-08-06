@@ -7,7 +7,13 @@ import * as mc from '../controllers/media.controller';
 import * as schemas from '../schemas/media.schema';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 52428800 } });
+// 50 MB per file, matching client_max_body_size in .platform/nginx/conf.d.
+// `files` and `parts` are capped too: memoryStorage buffers everything, so an
+// unbounded number of parts is a way to exhaust the process's memory.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 52428800, files: 3, parts: 10 },
+});
 
 // Images
 router.get('/menu/items/:menuItemId/images', authenticate, validate(schemas.mediaParamSchema, 'params'), mc.getImages);

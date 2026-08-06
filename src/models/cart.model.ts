@@ -127,6 +127,45 @@ export async function getModifierGroupsForItem(db: Db, menuItemId: string) {
   return data;
 }
 
+/**
+ * An existing line for the same diner, same dish, same modifier selection.
+ *
+ * Ordering the same dish twice must grow one line to quantity 2, not stack two
+ * identical lines — which is what happened when the same burger arrived once
+ * from the menu and once from an accepted upsell. Modifiers are compared as a
+ * normalised set: {cheese, bacon} and {bacon, cheese} are the same order, while
+ * a different selection is a genuinely different line and stays separate.
+ */
+export async function findMatchingCartItem(
+  db: Db,
+  sessionId: string,
+  memberId: string,
+  menuItemId: string,
+  modifiers: Array<{ groupId: string; modifierId: string }>,
+) {
+  const { data, error } = await db
+    .from('cart_items')
+    .select('id, quantity, modifiers_json')
+    .eq('session_id', sessionId)
+    .eq('member_id', memberId)
+    .eq('menu_item_id', menuItemId);
+
+  if (error) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to look up cart item', error);
+
+  const wanted = normaliseModifiers(modifiers);
+  return (data ?? []).find(
+    row => normaliseModifiers(row.modifiers_json as typeof modifiers) === wanted,
+  ) ?? null;
+}
+
+function normaliseModifiers(mods: Array<{ groupId: string; modifierId: string }> | null): string {
+  if (!Array.isArray(mods) || mods.length === 0) return '';
+  return mods
+    .map(m => m.modifierId)
+    .sort()
+    .join(',');
+}
+
 export async function insertCartItem(db: Db, insertData: Database['public']['Tables']['cart_items']['Insert']) {
   const { data, error } = await db
     .from('cart_items')

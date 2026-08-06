@@ -21,6 +21,10 @@ export const dinerJoinSchema = z.object({
   initials: z.string().length(2).optional()
 }).strict();
 
+export const tableMembersParamsSchema = z.object({
+  qrToken: z.string().min(1).max(128)
+}).strict();
+
 export const staffInviteSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),

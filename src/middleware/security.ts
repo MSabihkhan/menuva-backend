@@ -102,6 +102,9 @@ export const corsMiddleware: RequestHandler = corsLib({
 export const cookieParser: RequestHandler = cookieParserLib() as RequestHandler;
 
 // ── 6. JSON body parser ─────────────────────────────────────────────────────
+// Stays small on purpose. File uploads are multipart and are handled by multer
+// on their own routes, so raising this would only widen the surface for a
+// large-JSON denial of service without making any upload work.
 export const jsonParser: RequestHandler = express.json({ limit: '1mb' });
 
 // ── 7. Rate limiters ────────────────────────────────────────────────────────

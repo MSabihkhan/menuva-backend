@@ -6,6 +6,7 @@ import {
   staffLogout,
   dinerJoin,
   staffInvite,
+  tableMembers,
 } from '../controllers/auth.controller';
 import { authLimiter, writeLimiter } from '../middleware/security';
 import { authenticate } from '../middleware/authenticate';
@@ -16,6 +17,7 @@ import {
   staffLoginSchema,
   dinerJoinSchema,
   staffInviteSchema,
+  tableMembersParamsSchema,
 } from '../schemas/auth.schema';
 import { asyncHandler } from '../utils/asyncHandler';
 
@@ -45,6 +47,16 @@ router.post(
   '/auth/staff/logout',
   authenticate,
   asyncHandler(staffLogout)
+);
+
+// Public on purpose: the diner scanning the code has no session yet, so there
+// is no token to authenticate with. Scoped to one table by its QR token and
+// returns display names + initials only.
+router.get(
+  '/auth/diner/table/:qrToken/members',
+  authLimiter,
+  validate(tableMembersParamsSchema, 'params'),
+  asyncHandler(tableMembers)
 );
 
 router.post(

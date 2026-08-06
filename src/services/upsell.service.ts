@@ -24,11 +24,14 @@ export async function createPairings(
   targetItemIds: string[],
   sortOrder?: number
 ) {
-  const inserts = targetItemIds.map(targetItemId => ({
+  // `sort_order` is NOT NULL. Passing the optional argument straight through
+  // sent an explicit null and every pairing insert failed with a not-null
+  // violation, surfaced as a generic "Failed to create pairings".
+  const inserts = targetItemIds.map((targetItemId, index) => ({
     restaurant_id: restaurantId,
     source_item_id: sourceItemId,
     target_item_id: targetItemId,
-    sort_order: sortOrder
+    sort_order: sortOrder ?? index
   }));
   return await upsellModel.createPairings(db, inserts);
 }
@@ -69,13 +72,17 @@ export async function getSuggestions(
   declinedItemIds: string[],
   impressionsThisRound: number
 ) {
+  // Every argument is sent explicitly. Omitting an optional one (the client
+  // may leave `declinedItemIds` out entirely) dropped it from the RPC call, no
+  // function matched the resulting signature, and the whole suggestions
+  // endpoint 500'd — so no diner saw any upsell at all.
   const { data, error } = await db.rpc('get_upsell_suggestions', {
     p_session_id: sessionId,
     p_trigger: trigger,
-    p_trigger_item_id: triggerItemId || undefined,
-    p_cart_item_ids: cartItemIds,
-    p_declined_item_ids: declinedItemIds,
-    p_impressions_this_round: impressionsThisRound,
+    p_trigger_item_id: triggerItemId ?? null,
+    p_cart_item_ids: cartItemIds ?? [],
+    p_declined_item_ids: declinedItemIds ?? [],
+    p_impressions_this_round: impressionsThisRound ?? 0,
   } as any);
   if (error) throw error;
   return data;

@@ -1,7 +1,11 @@
 import { randomBytes } from 'crypto';
 import { supabaseAnon, supabaseAdmin, supabaseForToken } from '../config/supabase';
 import { AppError } from '../utils/AppError';
-import { joinTableSession, inviteStaffRpc } from '../models/auth.model';
+import {
+  joinTableSession,
+  inviteStaffRpc,
+  getTableMembers as getTableMembersModel,
+} from '../models/auth.model';
 import { broadcastToSession } from '../utils/realtime';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.types';
@@ -102,6 +106,15 @@ export async function staffLogout(accessToken: string) {
   if (error) {
     // If it fails, we still want to clear cookies, so we ignore or log.
   }
+}
+
+/**
+ * Who is already sitting at this table, for the join screen. Public: the diner
+ * scanning the code has no session yet, so there is no token to authenticate
+ * with. Returns display names and initials only.
+ */
+export async function getTableMembers(qrToken: string) {
+  return await getTableMembersModel(supabaseAnon, qrToken);
 }
 
 export async function dinerJoin(params: { qrToken: string; deviceId: string; dinerName: string; initials?: string }) {

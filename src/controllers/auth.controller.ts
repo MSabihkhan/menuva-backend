@@ -79,6 +79,11 @@ export async function dinerJoin(req: Request, res: Response) {
   res.status(200).json({ ok: true, data: result });
 }
 
+export async function tableMembers(req: Request, res: Response) {
+  const result = await authService.getTableMembers(req.params.qrToken as string);
+  res.status(200).json({ ok: true, data: result });
+}
+
 export async function staffInvite(req: Request, res: Response) {
   if (!req.db || !req.auth) {
     throw new AppError(500, 'INTERNAL_ERROR', 'Database client missing');

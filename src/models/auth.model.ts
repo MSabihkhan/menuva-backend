@@ -29,6 +29,27 @@ export async function joinTableSession(
   return data as any;
 }
 
+/**
+ * Who is already at the table, for the join screen. Unauthenticated by design:
+ * the caller is holding the table's QR code but has no session yet.
+ */
+export async function getTableMembers(db: Db, qrToken: string) {
+  const { data, error } = await db.rpc('get_table_members', { p_qr_token: qrToken });
+
+  if (error) {
+    if (error.code === 'P0001' || error.message.includes('Invalid or inactive')) {
+      throw new AppError(404, 'NOT_FOUND', 'Invalid or inactive QR token');
+    }
+    throw new AppError(500, 'INTERNAL_ERROR', 'Failed to fetch table members', error);
+  }
+
+  return data as unknown as {
+    tableCode: string;
+    tableLabel: string | null;
+    members: { name: string; initials: string }[];
+  };
+}
+
 export async function inviteStaffRpc(
   db: Db,
   email: string,

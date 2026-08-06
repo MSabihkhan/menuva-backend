@@ -4,6 +4,11 @@ import { logger } from '../utils/logger';
 import { env } from '../config/env';
 
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+  // Normalize Multer file size limit errors
+  if (err && (err.code === 'LIMIT_FILE_SIZE' || err.name === 'MulterError')) {
+    err = new AppError(413, 'PAYLOAD_TOO_LARGE', err.message || 'File size limit exceeded (max 50MB)');
+  }
+
   // Determine if this is a known AppError or an unexpected error
   const isAppError = err instanceof AppError;
   const isHttpError = err && typeof err.status === 'number' && err.status >= 400 && err.status < 600;

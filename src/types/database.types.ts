@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -20,36 +20,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-
-      get_daily_sales: {
-        Args: { p_from?: string | undefined; p_to?: string | undefined; p_branch_id?: string | undefined }
-        Returns: { restaurant_id: string; branch_id: string; day: string; order_count: number; revenue_paisa: number; covers: number; aov_paisa: number }[]
-      }
-      get_item_performance: {
-        Args: Record<PropertyKey, never>
-        Returns: { restaurant_id: string; menu_item_id: string; category_id: string | null; units_sold: number; revenue_paisa: number; cost_paisa: number | null; margin_paisa: number | null; popularity_rank: number }[]
-      }
-      get_kitchen_item_timings: {
-        Args: Record<PropertyKey, never>
-        Returns: { restaurant_id: string; branch_id: string; menu_item_id: string; avg_time_sec: number; sample_count: number }[]
-      }
-      get_kitchen_timings: {
-        Args: Record<PropertyKey, never>
-        Returns: { restaurant_id: string; branch_id: string; avg_prep_seconds: number; avg_ready_seconds: number; avg_serve_seconds: number; sample_count: number }[]
-      }
-      get_order_heatmap: {
-        Args: Record<PropertyKey, never>
-        Returns: { restaurant_id: string; branch_id: string; dow: number; hour: number; order_count: number }[]
-      }
-      get_upsell_performance: {
-        Args: Record<PropertyKey, never>
-        Returns: { restaurant_id: string; branch_id: string; source_type: string; shown: number; accepted: number; declined: number; ignored: number; acceptance_rate_bps: number; ignore_rate_bps: number; upsell_revenue_paisa: number }[]
-      }
-      refresh_all_analytics: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-
       graphql: {
         Args: {
           extensions?: Json
@@ -69,6 +39,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_refresh_state: {
+        Row: {
+          id: boolean
+          last_refreshed_at: string
+        }
+        Insert: {
+          id?: boolean
+          last_refreshed_at?: string
+        }
+        Update: {
+          id?: boolean
+          last_refreshed_at?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -182,13 +167,13 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          closes_at: string
+          closes_at?: string
           created_at?: string
           deleted_at?: string | null
           id?: string
           is_active?: boolean
           name: string
-          opens_at: string
+          opens_at?: string
           restaurant_id: string
           slug: string
           timezone?: string
@@ -1259,6 +1244,8 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          discount_amount: number
+          discount_source: string | null
           id: string
           method: string
           order_id: string
@@ -1268,6 +1255,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          discount_amount?: number
+          discount_source?: string | null
           id?: string
           method: string
           order_id: string
@@ -1277,6 +1266,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          discount_amount?: number
+          discount_source?: string | null
           id?: string
           method?: string
           order_id?: string
@@ -1635,7 +1626,7 @@ export type Database = {
           branch_id: string
           closed_at?: string | null
           created_at?: string
-          expires_at: string
+          expires_at?: string
           id?: string
           is_locked?: boolean
           opened_at?: string
@@ -1973,14 +1964,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "order_line_items_menu_item_id_fkey"
-            columns: ["item_b"]
+            columns: ["item_a"]
             isOneToOne: false
             referencedRelation: "menu_items"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "order_line_items_menu_item_id_fkey"
-            columns: ["item_a"]
+            columns: ["item_b"]
             isOneToOne: false
             referencedRelation: "menu_items"
             referencedColumns: ["id"]
@@ -1996,6 +1987,7 @@ export type Database = {
       }
       item_performance: {
         Row: {
+          category_id: string | null
           cost_paisa: number | null
           margin_paisa: number | null
           menu_item_id: string | null
@@ -2006,10 +1998,49 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "menu_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "order_line_items_menu_item_id_fkey"
             columns: ["menu_item_id"]
             isOneToOne: false
             referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kitchen_item_timings: {
+        Row: {
+          avg_time_sec: number | null
+          branch_id: string | null
+          menu_item_id: string | null
+          restaurant_id: string | null
+          sample_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_line_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
             referencedColumns: ["id"]
           },
           {
@@ -2058,6 +2089,31 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "events_tenant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_heatmap: {
+        Row: {
+          branch_id: string | null
+          dow: number | null
+          hour: number | null
+          order_count: number | null
+          restaurant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
@@ -2124,9 +2180,11 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_function_def: { Args: never; Returns: string }
       get_item_performance: {
         Args: never
         Returns: {
+          category_id: string | null
           cost_paisa: number | null
           margin_paisa: number | null
           menu_item_id: string | null
@@ -2138,6 +2196,22 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "item_performance"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_kitchen_item_timings: {
+        Args: never
+        Returns: {
+          avg_time_sec: number | null
+          branch_id: string | null
+          menu_item_id: string | null
+          restaurant_id: string | null
+          sample_count: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "kitchen_item_timings"
           isOneToOne: false
           isSetofReturn: true
         }
@@ -2159,6 +2233,23 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_order_heatmap: {
+        Args: never
+        Returns: {
+          branch_id: string | null
+          dow: number | null
+          hour: number | null
+          order_count: number | null
+          restaurant_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "order_heatmap"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_table_members: { Args: { p_qr_token: string }; Returns: Json }
       get_upsell_performance: {
         Args: never
         Returns: {
@@ -2182,12 +2273,12 @@ export type Database = {
       }
       get_upsell_suggestions: {
         Args: {
-          p_cart_item_ids: string[]
-          p_declined_item_ids: string[]
-          p_impressions_this_round: number
+          p_cart_item_ids?: string[]
+          p_declined_item_ids?: string[]
+          p_impressions_this_round?: number
           p_session_id: string
           p_trigger: string
-          p_trigger_item_id: string
+          p_trigger_item_id?: string
         }
         Returns: Json
       }
@@ -2222,6 +2313,11 @@ export type Database = {
           p_kitchen_notes?: string
           p_session_id: string
         }
+        Returns: Json
+      }
+      refresh_all_analytics: { Args: never; Returns: undefined }
+      refresh_analytics_if_stale: {
+        Args: { p_max_age_seconds?: number }
         Returns: Json
       }
       run_end_of_day: { Args: never; Returns: Json }
