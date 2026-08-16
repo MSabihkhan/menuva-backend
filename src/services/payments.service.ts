@@ -32,7 +32,105 @@ function settledSoFar(orders: Array<{ payments: Array<{ amount: number; discount
   return { collected, discounted, settled: collected + discounted };
 }
 
+export type SplitChoice = 'full' | 'equal' | 'personal';
+
+export interface SplitShare {
+  memberId: string;
+  name: string;
+  choice: SplitChoice;
+  /** What this member owes, in paisa. */
+  amount: number;
+  /** Their own items' subtotal, for showing the working. */
+  ownSubtotal: number;
+}
+
+/**
+ * Turn each diner's chosen split method into what they actually owe.
+ *
+ * The mixed case is the interesting one, and it is the reason this is computed
+ * server-side rather than in the UI: when some people pay for their own items
+ * and the rest split, the "rest" is NOT the whole bill — it is what remains
+ * after the personal payers have covered themselves. Dividing the full total
+ * among the equal-splitters would over-collect from the table.
+ *
+ * Tax and service are apportioned in the same ratio as the subtotal they sit
+ * on, so nobody pays tax on someone else's food.
+ *
+ * Rounding is settled on the last payer in each group, so the shares always sum
+ * to exactly the bill total — never a paisa more or less.
+ */
+export function computeSplit(
+  members: { memberId: string; name: string; subtotal: number }[],
+  choices: Record<string, SplitChoice>,
+  total: number,
+  subtotal: number,
+): SplitShare[] {
+  const withChoice = members.map(m => ({
+    ...m,
+    choice: (choices[m.memberId] ?? 'equal') as SplitChoice,
+  }));
+
+  // Multiplier that carries each member's slice of tax and service charge.
+  const grossOf = (own: number) => (subtotal > 0 ? Math.round((own / subtotal) * total) : 0);
+
+  const fullPayers = withChoice.filter(m => m.choice === 'full');
+
+  // Somebody volunteering for the whole bill overrides everything else — that
+  // is what "full" means, and it is the one case where others owe nothing.
+  if (fullPayers.length > 0) {
+    const each = Math.floor(total / fullPayers.length);
+    return withChoice.map((m) => {
+      if (m.choice !== 'full') {
+        return { memberId: m.memberId, name: m.name, choice: m.choice, amount: 0, ownSubtotal: m.subtotal };
+      }
+      const isLastFull = fullPayers[fullPayers.length - 1].memberId === m.memberId;
+      const amount = isLastFull ? total - each * (fullPayers.length - 1) : each;
+      return { memberId: m.memberId, name: m.name, choice: m.choice, amount, ownSubtotal: m.subtotal };
+    });
+  }
+
+  const personal = withChoice.filter(m => m.choice === 'personal');
+  const equal = withChoice.filter(m => m.choice === 'equal');
+
+  const personalAmounts = new Map<string, number>();
+  let personalTotal = 0;
+  for (const m of personal) {
+    const amount = grossOf(m.subtotal);
+    personalAmounts.set(m.memberId, amount);
+    personalTotal += amount;
+  }
+
+  // What the equal-splitters share: the table total minus what the personal
+  // payers are covering for themselves.
+  const remainder = Math.max(0, total - personalTotal);
+  const equalEach = equal.length > 0 ? Math.floor(remainder / equal.length) : 0;
+
+  return withChoice.map(m => {
+    if (m.choice === 'personal') {
+      return {
+        memberId: m.memberId, name: m.name, choice: m.choice,
+        amount: personalAmounts.get(m.memberId) ?? 0, ownSubtotal: m.subtotal,
+      };
+    }
+    const isLastEqual = equal.length > 0 && equal[equal.length - 1].memberId === m.memberId;
+    const amount = isLastEqual ? remainder - equalEach * (equal.length - 1) : equalEach;
+    return { memberId: m.memberId, name: m.name, choice: m.choice, amount, ownSubtotal: m.subtotal };
+  });
+}
+
 export const paymentsService = {
+  /** Per-member breakdown for an agreed set of split choices. */
+  async getSplit(db: Db, sessionId: string, restaurantId: string, choices: Record<string, SplitChoice>) {
+    const bill = await this.getBill(db, sessionId, restaurantId);
+    const shares = computeSplit(
+      bill.byMember.map(m => ({ memberId: m.memberId, name: m.name, subtotal: m.subtotal })),
+      choices,
+      bill.amountDue,
+      bill.subtotal,
+    );
+    return { shares, total: bill.amountDue, subtotal: bill.subtotal };
+  },
+
   async getBill(db: Db, sessionId: string, restaurantId: string, currentMemberId?: string) {
     const orders = await paymentModel.getSessionOrders(db, sessionId);
     

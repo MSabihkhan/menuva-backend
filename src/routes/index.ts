@@ -17,6 +17,7 @@ import analyticsRoutes from './analytics.routes';
 import saasRoutes from './saas.routes';
 import mediaRoutes from './media.routes';
 import onboardingRoutes from './onboarding.routes';
+import promptsRoutes from './prompts.routes';
 
 const router = Router();
 
@@ -37,6 +38,7 @@ router.use(reviewsRoutes);
 router.use(analyticsRoutes);
 router.use('/saas', saasRoutes);
 router.use(mediaRoutes);
+router.use(promptsRoutes);
 router.use('/onboarding', onboardingRoutes);
 
 export default router;

@@ -1609,6 +1609,103 @@ export type Database = {
           },
         ]
       }
+      table_prompt_responses: {
+        Row: {
+          member_id: string
+          prompt_id: string
+          responded_at: string
+          response: string
+        }
+        Insert: {
+          member_id: string
+          prompt_id: string
+          responded_at?: string
+          response: string
+        }
+        Update: {
+          member_id?: string
+          prompt_id?: string
+          responded_at?: string
+          response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_prompt_responses_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "session_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_prompt_responses_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "table_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      table_prompts: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          initiated_by: string
+          kind: string
+          payload: Json
+          resolved_at: string | null
+          restaurant_id: string
+          session_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          initiated_by: string
+          kind: string
+          payload?: Json
+          resolved_at?: string | null
+          restaurant_id: string
+          session_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          initiated_by?: string
+          kind?: string
+          payload?: Json
+          resolved_at?: string | null
+          restaurant_id?: string
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_prompts_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "session_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_prompts_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_prompts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "table_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       table_sessions: {
         Row: {
           branch_id: string
@@ -1964,14 +2061,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "order_line_items_menu_item_id_fkey"
-            columns: ["item_a"]
+            columns: ["item_b"]
             isOneToOne: false
             referencedRelation: "menu_items"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "order_line_items_menu_item_id_fkey"
-            columns: ["item_b"]
+            columns: ["item_a"]
             isOneToOne: false
             referencedRelation: "menu_items"
             referencedColumns: ["id"]
@@ -2153,6 +2250,10 @@ export type Database = {
       }
     }
     Functions: {
+      close_table_prompt: {
+        Args: { p_prompt_id: string; p_status: string }
+        Returns: undefined
+      }
       create_events_partition: {
         Args: { p_month: number; p_year: number }
         Returns: undefined
@@ -2162,6 +2263,8 @@ export type Database = {
       current_member_id: { Args: never; Returns: string }
       current_restaurant_id: { Args: never; Returns: string }
       current_user_role: { Args: never; Returns: string }
+      end_diner_session: { Args: { p_session_id: string }; Returns: Json }
+      get_active_table_prompt: { Args: { p_session_id: string }; Returns: Json }
       get_daily_sales: {
         Args: { p_branch_id?: string; p_from?: string; p_to?: string }
         Returns: {
@@ -2250,6 +2353,7 @@ export type Database = {
         }
       }
       get_table_members: { Args: { p_qr_token: string }; Returns: Json }
+      get_table_prompt: { Args: { p_prompt_id: string }; Returns: Json }
       get_upsell_performance: {
         Args: never
         Returns: {
@@ -2307,6 +2411,16 @@ export type Database = {
         Args: { p_event_type: string; p_payload: Json; p_session_id: string }
         Returns: undefined
       }
+      open_table_prompt: {
+        Args: {
+          p_kind: string
+          p_member_id: string
+          p_payload?: Json
+          p_session_id: string
+          p_ttl_seconds?: number
+        }
+        Returns: Json
+      }
       place_order: {
         Args: {
           p_idempotency_key: string
@@ -2318,6 +2432,10 @@ export type Database = {
       refresh_all_analytics: { Args: never; Returns: undefined }
       refresh_analytics_if_stale: {
         Args: { p_max_age_seconds?: number }
+        Returns: Json
+      }
+      respond_table_prompt: {
+        Args: { p_member_id: string; p_prompt_id: string; p_response: string }
         Returns: Json
       }
       run_end_of_day: { Args: never; Returns: Json }

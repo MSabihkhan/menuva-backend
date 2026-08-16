@@ -10,6 +10,12 @@ export const paymentsController = {
     res.status(200).json({ ok: true, data: bill });
   },
 
+  async getSplit(req: Request, res: Response) {
+    const auth = req.auth!;
+    const split = await paymentsService.getSplit(req.db!, auth.sessionId!, auth.restaurantId, req.body.choices);
+    res.status(200).json({ ok: true, data: split });
+  },
+
   async payBill(req: Request, res: Response) {
     const auth = req.auth!;
     const payment = await paymentsService.payBill(req.db!, auth.sessionId!, auth.restaurantId, req.body);
