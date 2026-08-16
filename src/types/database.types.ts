@@ -2250,6 +2250,18 @@ export type Database = {
       }
     }
     Functions: {
+      close_stale_sessions_for_token: {
+        Args: { p_qr_token: string }
+        Returns: number
+      }
+      close_stale_table_sessions: {
+        Args: {
+          p_idle_minutes?: number
+          p_settled_idle_minutes?: number
+          p_table_id: string
+        }
+        Returns: number
+      }
       close_table_prompt: {
         Args: { p_prompt_id: string; p_status: string }
         Returns: undefined
