@@ -2275,7 +2275,9 @@ export type Database = {
       current_member_id: { Args: never; Returns: string }
       current_restaurant_id: { Args: never; Returns: string }
       current_user_role: { Args: never; Returns: string }
-      end_diner_session: { Args: { p_session_id: string }; Returns: Json }
+      end_diner_session:
+        | { Args: { p_session_id: string }; Returns: Json }
+        | { Args: { p_force?: boolean; p_session_id: string }; Returns: Json }
       get_active_table_prompt: { Args: { p_session_id: string }; Returns: Json }
       get_daily_sales: {
         Args: { p_branch_id?: string; p_from?: string; p_to?: string }
@@ -2451,6 +2453,7 @@ export type Database = {
         Returns: Json
       }
       run_end_of_day: { Args: never; Returns: Json }
+      session_close_state: { Args: { p_session_id: string }; Returns: Json }
       validate_diner_session: {
         Args: never
         Returns: {

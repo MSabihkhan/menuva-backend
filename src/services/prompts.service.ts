@@ -79,7 +79,15 @@ export const promptsService = {
    */
   async endSession(db: Db, sessionId: string) {
     const result = await promptModel.endSession(db, sessionId);
-    await broadcastToSession(sessionId, 'session_ended', { sessionId });
+    // Only tell the table it is over if it actually is. Broadcasting a close
+    // that the database refused would eject everyone from a live session.
+    if (result.closed) {
+      await broadcastToSession(sessionId, 'session_ended', { sessionId });
+    }
     return result;
+  },
+
+  async closeState(db: Db, sessionId: string) {
+    return await promptModel.getCloseState(db, sessionId);
   },
 };

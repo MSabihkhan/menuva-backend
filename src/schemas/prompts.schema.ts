@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const PROMPT_KINDS = ['place_order', 'split_method', 'end_session'] as const;
+export const PROMPT_KINDS = ['place_order', 'split_method', 'end_session', 'pay_bill'] as const;
 
 /** Custom split was removed: only these three are offered. */
 export const SPLIT_CHOICES = ['full', 'equal', 'personal'] as const;

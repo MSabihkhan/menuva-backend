@@ -37,6 +37,12 @@ export const promptsController = {
     res.status(200).json({ ok: true, data: {} });
   },
 
+  async closeState(req: Request, res: Response) {
+    const auth = req.auth!;
+    const state = await promptsService.closeState(req.db!, auth.sessionId!);
+    res.status(200).json({ ok: true, data: state });
+  },
+
   async endSession(req: Request, res: Response) {
     const auth = req.auth!;
     const result = await promptsService.endSession(req.db!, auth.sessionId!);

@@ -35,7 +35,12 @@ router.post('/table/prompts/:promptId/resolve',
   dinerLimiter, authenticate, requireDiner,
   validate(promptParamsSchema, 'params'), asyncHandler(promptsController.resolve));
 
-// Ends the table for everyone — the last step of the pay-and-leave flow.
+// Whether the table is finished: food served AND bill settled.
+router.get('/table/close-state',
+  dinerLimiter, authenticate, requireDiner,
+  asyncHandler(promptsController.closeState));
+
+// Ends the table for everyone — refused until the visit is genuinely over.
 router.post('/table/end',
   dinerLimiter, authenticate, requireDiner,
   asyncHandler(promptsController.endSession));

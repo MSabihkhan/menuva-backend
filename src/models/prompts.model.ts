@@ -71,8 +71,29 @@ export async function closePrompt(db: Db, promptId: string, status: 'resolved' |
   if (error) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to close prompt', error);
 }
 
+export interface CloseState {
+  orderCount: number;
+  unservedCount: number;
+  allServed: boolean;
+  paid: boolean;
+  /** The table may only close once the food is served AND the bill is settled. */
+  canClose: boolean;
+}
+
+export async function getCloseState(db: Db, sessionId: string) {
+  const { data, error } = await db.rpc('session_close_state', { p_session_id: sessionId });
+  if (error) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to read close state', error);
+  return data as unknown as CloseState;
+}
+
 export async function endSession(db: Db, sessionId: string) {
   const { data, error } = await db.rpc('end_diner_session', { p_session_id: sessionId });
   if (error) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to end session', error);
-  return data as unknown as { sessionId: string; closedAt: string };
+  return data as unknown as {
+    closed: boolean;
+    reason?: 'bill_outstanding' | 'food_not_served';
+    sessionId?: string;
+    closedAt?: string;
+    state: CloseState;
+  };
 }
