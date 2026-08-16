@@ -3,6 +3,7 @@ import type { Database } from '../types/database.types';
 import * as promptModel from '../models/prompts.model';
 import { AppError } from '../utils/AppError';
 import { broadcastToSession } from '../utils/realtime';
+import { invalidateSession } from '../middleware/authenticate';
 
 type Db = SupabaseClient<Database>;
 
@@ -82,7 +83,9 @@ export const promptsService = {
     // Only tell the table it is over if it actually is. Broadcasting a close
     // that the database refused would eject everyone from a live session.
     if (result.closed) {
-      await broadcastToSession(sessionId, 'session_ended', { sessionId });
+      // Drop the cached "still open" row before anyone can use it.
+      invalidateSession(sessionId);
+      broadcastToSession(sessionId, 'session_ended', { sessionId });
     }
     return result;
   },

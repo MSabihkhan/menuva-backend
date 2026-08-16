@@ -12,8 +12,10 @@ type Db = SupabaseClient<Database>;
  * editor can populate without a second raw fetch.
  */
 export async function getManageMenu(db: Db) {
-  const categories = await menuModel.getMenuCategories(db);
-  const items = await menuModel.getMenuItems(db);
+  const [categories, items] = await Promise.all([
+    menuModel.getMenuCategories(db),
+    menuModel.getMenuItems(db),
+  ]);
 
   return {
     categories: categories.map((c: any) => ({
@@ -65,10 +67,14 @@ export async function getManageMenu(db: Db) {
 }
 
 export async function getAssembledMenu(db: Db, branchId: string, restaurantId?: string) {
-  const categories = await menuModel.getMenuCategories(db);
-  const items = await menuModel.getMenuItems(db);
-  const branchItems = await menuModel.getBranchMenuItems(db, branchId);
-  const brand = restaurantId ? await menuModel.getRestaurantBrand(db, restaurantId) : null;
+  // Four independent reads. Run sequentially they were four Supabase round
+  // trips (~250ms each) on the very first screen the diner sees.
+  const [categories, items, branchItems, brand] = await Promise.all([
+    menuModel.getMenuCategories(db),
+    menuModel.getMenuItems(db),
+    menuModel.getBranchMenuItems(db, branchId),
+    restaurantId ? menuModel.getRestaurantBrand(db, restaurantId) : Promise.resolve(null),
+  ]);
 
   const branchItemMap = new Map(branchItems.map((bi: any) => [bi.menu_item_id, bi]));
 

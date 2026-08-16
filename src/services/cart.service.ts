@@ -10,8 +10,14 @@ type Db = SupabaseClient<Database>;
 
 export const cartService = {
   async getCart(db: Db, sessionId: string, restaurantId: string, branchId: string, currentMemberId?: string) {
-    const items = await cartModel.getSessionCartItems(db, sessionId);
-    const members = await cartModel.getSessionMembers(db, sessionId);
+    // Independent queries, so they run together. Sequentially these cost one
+    // Supabase round trip each (~250ms), which is most of what made opening
+    // the cart feel slow.
+    const [items, members, rates] = await Promise.all([
+      cartModel.getSessionCartItems(db, sessionId),
+      cartModel.getSessionMembers(db, sessionId),
+      cartModel.getRestaurantRates(db, restaurantId),
+    ]);
 
     const membersMap = new Map<string, any>();
     for (const m of members) {
@@ -32,16 +38,15 @@ export const cartService = {
     }
 
     const menuItemIds = [...new Set(items.map(i => i.menu_item_id))];
-    const menuItems = await cartModel.getMenuItemsForCart(db, menuItemIds, branchId);
-    
     const modifierIds = items.flatMap(i => {
       const mods = i.modifiers_json as Array<{groupId: string, modifierId: string}> | null;
       return mods ? mods.map(m => m.modifierId) : [];
     });
-    
-    const modifiers = await cartModel.getModifiersForCart(db, [...new Set(modifierIds)]);
-    
-    const rates = await cartModel.getRestaurantRates(db, restaurantId);
+
+    const [menuItems, modifiers] = await Promise.all([
+      cartModel.getMenuItemsForCart(db, menuItemIds, branchId),
+      cartModel.getModifiersForCart(db, [...new Set(modifierIds)]),
+    ]);
 
     let subtotal = 0;
 
@@ -114,25 +119,22 @@ export const cartService = {
   },
 
   async addItem(db: Db, sessionId: string, memberId: string, restaurantId: string, branchId: string, data: any) {
-    const menuItems = await cartModel.getMenuItemsForCart(db, [data.menuItemId], branchId);
+    // Three independent lookups — availability, modifier validation, and the
+    // existing-line check — fired together rather than one after another.
+    //
+    // Merging matters here: adding the same burger from the menu and again from
+    // an upsell used to produce two "1x" lines rather than one "2x", because
+    // every add was an unconditional INSERT.
+    const [menuItems, , existing] = await Promise.all([
+      cartModel.getMenuItemsForCart(db, [data.menuItemId], branchId),
+      this.validateModifiers(db, data.menuItemId, data.modifiers || []),
+      cartModel.findMatchingCartItem(db, sessionId, memberId, data.menuItemId, data.modifiers || []),
+    ]);
+
     // @ts-ignore
     if (!menuItems.length || !menuItems[0].branch_menu_items?.[0]?.available) {
       throw new AppError(404, 'NOT_FOUND', 'Item not available on this branch');
     }
-
-    await this.validateModifiers(db, data.menuItemId, data.modifiers || []);
-
-    // Merge into the diner's existing line for this exact dish + modifier
-    // selection instead of stacking a duplicate. Adding the same burger from
-    // the menu and again from an upsell used to produce two "1×" lines rather
-    // than one "2×", because every add was an unconditional INSERT.
-    const existing = await cartModel.findMatchingCartItem(
-      db,
-      sessionId,
-      memberId,
-      data.menuItemId,
-      data.modifiers || [],
-    );
 
     const inserted = existing
       ? await cartModel.updateCartItem(db, existing.id, {

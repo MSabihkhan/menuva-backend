@@ -11,6 +11,39 @@ import type { AuthContext, Role } from '../types/auth.types';
  */
 const REVIEW_GRACE_MS = 30 * 60 * 1000;
 
+/**
+ * Short-lived cache of the diner session row.
+ *
+ * Every diner request re-read table_sessions to check the session was still
+ * open — a full Supabase round trip (~230ms) on the critical path of every tap,
+ * just to read a row that changes at most a handful of times per visit.
+ *
+ * The TTL is deliberately tiny, and `invalidateSession` is called the instant a
+ * session is closed, so a closed table still ejects its devices immediately
+ * rather than after the cache expires. The window only matters if a session is
+ * closed by something that does not go through the app.
+ */
+const SESSION_CACHE_TTL_MS = 5000;
+const sessionCache = new Map<string, { expiresAt: number; row: { expires_at: string; closed_at: string | null } }>();
+
+export function invalidateSession(sessionId: string): void {
+  sessionCache.delete(sessionId);
+}
+
+function cachedSession(sessionId: string) {
+  const hit = sessionCache.get(sessionId);
+  if (hit && hit.expiresAt > Date.now()) return hit.row;
+  if (hit) sessionCache.delete(sessionId);
+  return null;
+}
+
+function cacheSession(sessionId: string, row: { expires_at: string; closed_at: string | null }) {
+  // Never cache a closed session: it must be re-read so the close is honoured
+  // the moment the grace window for reviews lapses.
+  if (row.closed_at) return;
+  sessionCache.set(sessionId, { expiresAt: Date.now() + SESSION_CACHE_TTL_MS, row });
+}
+
 export const authenticate: RequestHandler = async (req, _res, next) => {
   try {
     // 1. Extract token — precedence: Authorization header, then mv_access cookie
@@ -47,19 +80,24 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
         raw: payload as unknown as Record<string, unknown>,
       };
 
-      // Live session re-check: validate the session is still open
-      const { data, error: sessionError } = await supabaseAdmin
-        .from('table_sessions')
-        .select('id,expires_at,closed_at')
-        .eq('id', auth.sessionId!)
-        .single();
+      // Live session re-check: validate the session is still open.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const session = data as any;
+      let session: any = cachedSession(auth.sessionId!);
 
-      if (sessionError || !session) {
-        console.error('authenticate.ts sessionError:', sessionError);
-        throw new AppError(401, 'SESSION_EXPIRED',
-          'This table session has ended. Scan the QR code again.');
+      if (!session) {
+        const { data, error: sessionError } = await supabaseAdmin
+          .from('table_sessions')
+          .select('id,expires_at,closed_at')
+          .eq('id', auth.sessionId!)
+          .single();
+        session = data;
+
+        if (sessionError || !session) {
+          console.error('authenticate.ts sessionError:', sessionError);
+          throw new AppError(401, 'SESSION_EXPIRED',
+            'This table session has ended. Scan the QR code again.');
+        }
+        cacheSession(auth.sessionId!, session);
       }
 
       const expiresAt = new Date(session.expires_at as string).getTime();
