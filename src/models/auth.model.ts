@@ -11,6 +11,14 @@ export async function joinTableSession(
   dinerName: string,
   initials?: string
 ) {
+  // Retire anything the previous party walked away from BEFORE joining, or this
+  // diner is silently added to a session that is already over — which is how a
+  // fresh scan ended up showing three strangers already at the table.
+  await db.rpc('close_stale_sessions_for_token', { p_qr_token: qrToken }).then(
+    () => undefined,
+    () => undefined, // never block a join on housekeeping
+  );
+
   const { data, error } = await db.rpc('join_table_session', {
     p_qr_token: qrToken,
     p_device_id: deviceId,
