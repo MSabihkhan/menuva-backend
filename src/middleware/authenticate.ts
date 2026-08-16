@@ -4,6 +4,13 @@ import { verifyToken } from '../utils/jwt';
 import { supabaseForToken, supabaseAdmin } from '../config/supabase';
 import type { AuthContext, Role } from '../types/auth.types';
 
+/**
+ * How long after a table closes a diner may still submit their review.
+ * Payment closes the session for everyone, and the review comes straight
+ * after, so a hard cut-off would silently discard most feedback.
+ */
+const REVIEW_GRACE_MS = 30 * 60 * 1000;
+
 export const authenticate: RequestHandler = async (req, _res, next) => {
   try {
     // 1. Extract token — precedence: Authorization header, then mv_access cookie
@@ -56,7 +63,22 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
       }
 
       const expiresAt = new Date(session.expires_at as string).getTime();
-      if (session.closed_at || expiresAt < Date.now()) {
+
+      // A just-closed table still has to accept reviews. Paying closes the
+      // session for everyone, and the review is the very next thing each diner
+      // does — rejecting it outright meant the table could only be reviewed by
+      // someone who got in before the payment landed. Nothing else is allowed
+      // through: no menu, no cart, no ordering, no second payment.
+      const closedAt = session.closed_at ? new Date(session.closed_at as string).getTime() : null;
+      const withinReviewGrace =
+        closedAt !== null && Date.now() - closedAt <= REVIEW_GRACE_MS;
+      const reviewOnlyRequest = req.method === 'POST' && req.path.startsWith('/reviews');
+
+      if (expiresAt < Date.now()) {
+        throw new AppError(401, 'SESSION_EXPIRED',
+          'This table session has ended. Scan the QR code again.');
+      }
+      if (closedAt !== null && !(withinReviewGrace && reviewOnlyRequest)) {
         throw new AppError(401, 'SESSION_EXPIRED',
           'This table session has ended. Scan the QR code again.');
       }
